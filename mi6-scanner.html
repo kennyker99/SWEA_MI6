@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWEA MI6 趋势检测系统</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0a0a0a;
+            color: #e8e8e8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.5;
+        }
+
+        .header {
+            background-color: #0a0a0a;
+            border-bottom: 1px solid #1a1a1a;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 12px; }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            font-size: 13px;
+            color: #fff;
+        }
+
+        .header-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #a78bfa;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .header-subtitle {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #606060;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .header-right { display: flex; align-items: center; gap: 12px; }
+
+        .back-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #888;
+            padding: 7px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .back-btn:hover { border-color: #555; color: #ccc; }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
+        }
+
+        /* ── Left Panel ── */
+        .left-panel { display: flex; flex-direction: column; gap: 16px; }
+
+        .symbol-card {
+            background: #111;
+            border: 1px solid #1e1e1e;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .symbol-card label {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .symbol-input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            color: #e8e8e8;
+            padding: 10px 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .symbol-input:focus { outline: none; border-color: #7c3aed; }
+
+        .timeframe-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .tf-btn {
+            flex: 1;
+            min-width: 40px;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            color: #888;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        .tf-btn.active {
+            background: #1a0f3a;
+            border-color: #7c3aed;
+            color: #a78bfa;
+        }
+        .tf-btn:hover:not(.active) { border-color: #444; color: #ccc; }
+
+        /* Score Card */
+        .score-card {
+            background: #111;
+            border: 1px solid #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .score-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .score-ring {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 12px;
+        }
+
+        .score-ring svg { transform: rotate(-90deg); }
+
+        .score-circle-bg {
+            fill: none;
+            stroke: #1e1e1e;
+            stroke-width: 8;
+        }
+
+        .score-circle-fg {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.6s ease, stroke 0.3s;
+        }
+
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .score-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .score-denom {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .signal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+        }
+
+        .signal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .signal-badge.wait { background: #1a1a1a; color: #666; }
+        .signal-badge.wait .signal-dot { background: #555; }
+        .signal-badge.weak-bull { background: #0d2a1a; color: #4ade80; }
+        .signal-badge.weak-bull .signal-dot { background: #4ade80; }
+        .signal-badge.bull { background: #0a2d1a; color: #00d084; border: 1px solid #00d08455; }
+        .signal-badge.bull .signal-dot { background: #00d084; animation: pulse 1.5s infinite; }
+        .signal-badge.strong-bull { background: #0a3a1a; color: #00ff99; border: 1px solid #00ff9977; }
+        .signal-badge.strong-bull .signal-dot { background: #00ff99; animation: pulse 1s infinite; }
+        .signal-badge.weak-bear { background: #2a0d0d; color: #f87171; }
+        .signal-badge.weak-bear .signal-dot { background: #f87171; }
+        .signal-badge.bear { background: #2d0a0a; color: #ff4444; border: 1px solid #ff444455; }
+        .signal-badge.bear .signal-dot { background: #ff4444; animation: pulse 1.5s infinite; }
+        .signal-badge.strong-bear { background: #3a0a0a; color: #ff0000; border: 1px solid #ff000077; }
+        .signal-badge.strong-bear .signal-dot { background: #ff0000; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .signal-direction {
+            font-size: 11px;
+            color: #666;
+            font-family: 'IBM Plex Mono', monospace;
+            margin-top: 4px;
+        }
+
+        /* MI Summary bars */
+        .mi-summary { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+
+        .mi-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .mi-bar-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #888;
+            width: 36px;
+            text-transform: uppercase;
+        }
+
+        .mi-bar-track {
+            flex: 1;
+            height: 6px;
+            background: #1e1e1e;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .mi-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .mi-bar-score {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #555;
+            width: 28px;
+            text-align: right;
+        }
+
+        /* Analyze Button */
+        .analyze-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .analyze-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .analyze-btn:active { transform: translateY(0); }
+
+        .reset-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            color: #555;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .reset-btn:hover { border-color: #444; color: #888; }
+
+        /* ── Right Panel: MI Cards ── */
+        .right-panel { display: flex; flex-direction: column; gap: 16px; }
+
+        .mi-card {
+            background: #111;
+            border: 1px solid #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+
+        .mi-card.passed { border-color: #1a4a2a; }
+        .mi-card.partial { border-color: #3a3010; }
+        .mi-card.failed { border-color: #1e1e1e; }
+
+        .mi-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .mi-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .mi-header-text { flex: 1; }
+
+        .mi-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: #e0e0e0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .mi-question {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .mi-score-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            min-width: 52px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .mi-score-badge.none { background: #1a1a1a; color: #444; }
+        .mi-score-badge.low { background: #2d1a0a; color: #f97316; }
+        .mi-score-badge.mid { background: #2a2200; color: #ffd700; }
+        .mi-score-badge.high { background: #0a2d1a; color: #00d084; }
+
+        .mi-chevron {
+            color: #444;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+        .mi-card.expanded .mi-chevron { transform: rotate(180deg); }
+
+        .mi-body { padding: 16px 18px; display: none; }
+        .mi-card.expanded .mi-body { display: block; }
+
+        /* Criteria groups */
+        .criteria-group { margin-bottom: 14px; }
+        .criteria-group:last-child { margin-bottom: 0; }
+
+        .criteria-group-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #555;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .criterion {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #141414;
+        }
+        .criterion:last-child { border-bottom: none; }
+
+        .criterion-check {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .check-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            border: 1px solid #2a2a2a;
+            background: #0a0a0a;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            transition: all 0.15s;
+            color: #444;
+        }
+
+        .check-btn.yes.active {
+            background: #0a2d1a;
+            border-color: #00d084;
+            color: #00d084;
+        }
+
+        .check-btn.no.active {
+            background: #2d0a0a;
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .check-btn.na.active {
+            background: #1a1a1a;
+            border-color: #666;
+            color: #888;
+        }
+
+        .check-btn:hover:not(.active) { border-color: #444; color: #888; }
+
+        .criterion-content { flex: 1; }
+
+        .criterion-label {
+            font-size: 13px;
+            color: #c0c0c0;
+            margin-bottom: 2px;
+        }
+
+        .criterion-hint {
+            font-size: 11px;
+            color: #555;
+        }
+
+        .criterion-weight {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #444;
+            flex-shrink: 0;
+            padding-top: 7px;
+        }
+
+        /* Select inputs */
+        .criterion-select {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            color: #c0c0c0;
+            padding: 6px 10px;
+            font-size: 12px;
+            width: 100%;
+            margin-top: 6px;
+            cursor: pointer;
+        }
+        .criterion-select:focus { outline: none; border-color: #7c3aed; }
+        .criterion-select option { background: #111; }
+
+        /* Notes / output box */
+        .mi-note {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #888;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .mi-note.bull-note { border-color: #0a2d1a; color: #4ade80; background: #030d07; }
+        .mi-note.bear-note { border-color: #2d0a0a; color: #f87171; background: #0d0303; }
+        .mi-note.neutral-note { border-color: #2a2200; color: #ffd700; background: #0d0b03; }
+
+        /* Calculator within MI5 */
+        .calc-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .calc-field label {
+            display: block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .calc-field input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            color: #e8e8e8;
+            padding: 7px 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+        }
+        .calc-field input:focus { outline: none; border-color: #7c3aed; }
+
+        .calc-result {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .calc-output {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            padding: 8px 12px;
+        }
+
+        .calc-output-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .calc-output-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: #a78bfa;
+        }
+
+        .calc-output-value.good { color: #00d084; }
+        .calc-output-value.bad { color: #ff4444; }
+        .calc-output-value.warn { color: #ffd700; }
+
+        /* Trend direction toggle */
+        .direction-toggle {
+            display: flex;
+            gap: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #2a2a2a;
+            margin-top: 8px;
+        }
+
+        .dir-btn {
+            flex: 1;
+            padding: 8px;
+            background: #0a0a0a;
+            border: none;
+            color: #666;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .dir-btn + .dir-btn { border-left: 1px solid #2a2a2a; }
+        .dir-btn.active.bull-dir { background: #0a2d1a; color: #00d084; }
+        .dir-btn.active.bear-dir { background: #2d0a0a; color: #ff4444; }
+        .dir-btn.active.neutral-dir { background: #1a1a1a; color: #888; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        /* Tooltip */
+        .tooltip-wrap { position: relative; display: inline-flex; }
+        .tooltip-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1e1e1e;
+            color: #555;
+            font-size: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            margin-left: 4px;
+            flex-shrink: 0;
+        }
+        .tooltip-text {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #aaa;
+            width: 220px;
+            z-index: 200;
+            display: none;
+            line-height: 1.5;
+        }
+        .tooltip-wrap:hover .tooltip-text { display: block; }
+
+        /* Summary table */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .summary-table th {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: #555;
+            text-transform: uppercase;
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        .summary-table td {
+            padding: 7px 8px;
+            color: #888;
+            border-bottom: 1px solid #111;
+        }
+        .summary-table td:first-child { color: #c0c0c0; }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .tag.bull { background: #0a2d1a; color: #00d084; }
+        .tag.bear { background: #2d0a0a; color: #ff4444; }
+        .tag.neutral { background: #1a1a1a; color: #888; }
+
+        /* Progress bar in header */
+        .progress-header {
+            height: 3px;
+            background: #1a1a1a;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #4f46e5);
+            transition: width 0.4s ease;
+        }
+    </style>
+</head>
+<body>
+
+<div class="progress-header"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="header">
+    <div class="header-left">
+        <div class="logo">MI6</div>
+        <div>
+            <div class="header-title">SWEA MI6 趋势检测</div>
+            <div class="header-subtitle">6-Factor Market Confluence Scanner</div>
+        </div>
+    </div>
+    <div class="header-right">
+        <a href="index.html" class="back-btn">← 流动性仪表盘</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ── LEFT PANEL ── -->
+    <div class="left-panel">
+
+        <!-- Symbol + Timeframe -->
+        <div class="symbol-card">
+            <label>交易品种 / Symbol</label>
+            <input type="text" class="symbol-input" id="symbolInput" placeholder="EURUSD" value="EURUSD">
+            <div style="margin-top:10px; margin-bottom:6px;">
+                <label style="display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#666; text-transform:uppercase; letter-spacing:0.1em;">时间框架 / Timeframe</label>
+            </div>
+            <div class="timeframe-row">
+                <button class="tf-btn" onclick="setTF(this,'M')">M</button>
+                <button class="tf-btn" onclick="setTF(this,'W')">W</button>
+                <button class="tf-btn active" onclick="setTF(this,'D')">D</button>
+                <button class="tf-btn" onclick="setTF(this,'H4')">H4</button>
+                <button class="tf-btn" onclick="setTF(this,'H1')">H1</button>
+                <button class="tf-btn" onclick="setTF(this,'M15')">M15</button>
+            </div>
+
+            <div style="margin-top:14px;">
+                <label style="display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#666; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">交易方向 / Direction Bias</label>
+                <div class="direction-toggle">
+                    <button class="dir-btn bull-dir" id="dirBull" onclick="setDirection('bull')">▲ 做多</button>
+                    <button class="dir-btn neutral-dir active" id="dirNeutral" onclick="setDirection('neutral')">— 中性</button>
+                    <button class="dir-btn bear-dir" id="dirBear" onclick="setDirection('bear')">▼ 做空</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Score Card -->
+        <div class="score-card">
+            <div class="score-label">综合评分 / Total Score</div>
+            <div class="score-ring">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle class="score-circle-bg" cx="60" cy="60" r="52"/>
+                    <circle class="score-circle-fg" id="scoreCircle" cx="60" cy="60" r="52"
+                        stroke="#7c3aed"
+                        stroke-dasharray="326.7"
+                        stroke-dashoffset="326.7"/>
+                </svg>
+                <div class="score-text">
+                    <div class="score-number" id="scoreNumber" style="color:#7c3aed">0</div>
+                    <div class="score-denom">/18</div>
+                </div>
+            </div>
+            <div id="signalBadge" class="signal-badge wait">
+                <div class="signal-dot"></div>
+                <span>等待分析</span>
+            </div>
+            <div class="signal-direction" id="signalDesc">请填写各MI指标后点击分析</div>
+
+            <div class="mi-summary" id="miSummary">
+                <div class="mi-bar-row" onclick="scrollToMI('mi1')">
+                    <div class="mi-bar-label">MI1</div>
+                    <div class="mi-bar-track"><div class="mi-bar-fill" id="bar-mi1" style="width:0%;background:#FF6B6B"></div></div>
+                    <div class="mi-bar-score" id="barscore-mi1">0/3</div>
+                </div>
+                <div class="mi-bar-row" onclick="scrollToMI('mi2')">
+                    <div class="mi-bar-label">MI2</div>
+                    <div class="mi-bar-track"><div class="mi-bar-fill" id="bar-mi2" style="width:0%;background:#4ECDC4"></div></div>
+                    <div class="mi-bar-score" id="barscore-mi2">0/3</div>
+                </div>
+                <div class="mi-bar-row" onclick="scrollToMI('mi3')">
+                    <div class="mi-bar-label">MI3</div>
+                    <div class="mi-bar-track"><div class="mi-bar-fill" id="bar-mi3" style="width:0%;background:#FFE66D"></div></div>
+                    <div class="mi-bar-score" id="barscore-mi3">0/4</div>
+                </div>
+                <div class="mi-bar-row" onclick="scrollToMI('mi4')">
+                    <div class="mi-bar-label">MI4</div>
+                    <div class="mi-bar-track"><div class="mi-bar-fill" id="bar-mi4" style="width:0%;background:#95E1D3"></div></div>
+                    <div class="mi-bar-score" id="barscore-mi4">0/2</div>
+                </div>
+                <div class="mi-bar-row" onclick="scrollToMI('mi5')">
+                    <div class="mi-bar-label">MI5</div>
+                    <div class="mi-bar-track"><div class="mi-bar-fill" id="bar-mi5" style="width:0%;background:#F38181"></div></div>
+                    <div class="mi-bar-score" id="barscore-mi5">0/3</div>
+                </div>
+                <div class="mi-bar-row" onclick="scrollToMI('mi6')">
+                    <div class="mi-bar-label">MI6</div>
+                    <div class="mi-bar-track"><div class="mi-bar-fill" id="bar-mi6" style="width:0%;background:#AA96DA"></div></div>
+                    <div class="mi-bar-score" id="barscore-mi6">0/3</div>
+                </div>
+            </div>
+        </div>
+
+        <button class="analyze-btn" onclick="analyze()">⚡ 开始分析 / Analyze</button>
+        <button class="reset-btn" onclick="resetAll()">↺ 重置 / Reset All</button>
+    </div>
+
+    <!-- ── RIGHT PANEL: MI CARDS ── -->
+    <div class="right-panel">
+
+        <!-- MI1 -->
+        <div class="mi-card expanded" id="card-mi1">
+            <div class="mi-card-header" onclick="toggleCard('mi1')">
+                <div class="mi-icon" style="background:#2a1010">📊</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">MI1 — 汇市趋势 · Fundamental Analysis</div>
+                    <div class="mi-question">市场往哪去？Where is the market heading?</div>
+                </div>
+                <div class="mi-score-badge none" id="badge-mi1">0/3</div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <div class="criteria-group">
+                    <div class="criteria-group-title">宏观经济周期 · Economic Cycle</div>
+
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi1',0,'yes')" title="Yes">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi1',0,'no')" title="No">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi1',0,'na')" title="N/A">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">宏观趋势方向明确
+                                <div class="tooltip-wrap">
+                                    <span class="tooltip-icon">?</span>
+                                    <div class="tooltip-text">根据GDP增长、通胀率、就业数据，判断宏观经济方向是扩张还是收缩</div>
+                                </div>
+                            </div>
+                            <div class="criterion-hint">GDP增长、通胀率、就业数据 → 经济扩张 or 收缩？</div>
+                            <select class="criterion-select" id="mi1_cycle">
+                                <option value="">-- 选择经济阶段 --</option>
+                                <option value="expansion">扩张期 Expansion (牛市利好)</option>
+                                <option value="peak">顶峰期 Peak (即将转变)</option>
+                                <option value="contraction">收缩期 Contraction (熊市压力)</option>
+                                <option value="trough">谷底期 Trough (复苏在望)</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi1',1,'yes')" title="Yes">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi1',1,'no')" title="No">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi1',1,'na')" title="N/A">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">货币政策方向与交易方向一致</div>
+                            <div class="criterion-hint">央行是鹰派(加息/缩表) or 鸽派(降息/扩表)？与你的方向对齐？</div>
+                            <select class="criterion-select" id="mi1_policy">
+                                <option value="">-- 货币政策 --</option>
+                                <option value="hawkish">鹰派 Hawkish (利好该货币升值)</option>
+                                <option value="dovish">鸽派 Dovish (利好该货币贬值)</option>
+                                <option value="neutral">中性 Neutral (观望)</option>
+                                <option value="pivot">政策转向 Pivot (趋势变化)</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi1',2,'yes')" title="Yes">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi1',2,'no')" title="No">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi1',2,'na')" title="N/A">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">资金流向与方向一致</div>
+                            <div class="criterion-hint">热钱是否在流入/流出？机构资金是否在同向布局？</div>
+                            <select class="criterion-select" id="mi1_flow">
+                                <option value="">-- 资金流向 --</option>
+                                <option value="inflow">资金流入 Inflow (看涨信号)</option>
+                                <option value="outflow">资金流出 Outflow (看跌信号)</option>
+                                <option value="neutral">资金中性 Neutral</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+                <div class="mi-note" id="note-mi1">💡 宏观分析是趋势的根基。三者一致对齐时，信号最强。</div>
+            </div>
+        </div>
+
+        <!-- MI2 -->
+        <div class="mi-card" id="card-mi2">
+            <div class="mi-card-header" onclick="toggleCard('mi2')">
+                <div class="mi-icon" style="background:#0a1e1e">📈</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">MI2 — 价格行为 · Price Action</div>
+                    <div class="mi-question">现在在哪里？What does price tell us?</div>
+                </div>
+                <div class="mi-score-badge none" id="badge-mi2">0/3</div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <div class="criteria-group">
+                    <div class="criteria-group-title">K线形态 · Candlestick Pattern</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi2',0,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi2',0,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi2',0,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">关键位出现反转/延续K线形态</div>
+                            <div class="criterion-hint">锤子线、吞没形态、十字星、孕线等信号K线</div>
+                            <select class="criterion-select" id="mi2_candle">
+                                <option value="">-- K线形态 --</option>
+                                <option value="hammer">锤子线/倒锤子线 Hammer</option>
+                                <option value="engulf">吞没形态 Engulfing</option>
+                                <option value="doji">十字星 Doji</option>
+                                <option value="pinbar">Pin Bar (长影线)</option>
+                                <option value="marubozu">光头光脚 Marubozu (强势)</option>
+                                <option value="none">无明显形态</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">图表形态 · Chart Pattern</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi2',1,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi2',1,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi2',1,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">图表形态支持方向</div>
+                            <div class="criterion-hint">头肩顶/底、双顶/双底、三角形、旗形等</div>
+                            <select class="criterion-select" id="mi2_chart">
+                                <option value="">-- 图表形态 --</option>
+                                <option value="hs_top">头肩顶 H&S Top (看跌)</option>
+                                <option value="hs_bottom">头肩底 H&S Bottom (看涨)</option>
+                                <option value="double_top">双顶 Double Top (看跌)</option>
+                                <option value="double_bottom">双底 Double Bottom (看涨)</option>
+                                <option value="bull_flag">牛旗 Bull Flag (看涨)</option>
+                                <option value="bear_flag">熊旗 Bear Flag (看跌)</option>
+                                <option value="triangle">三角形突破 Triangle</option>
+                                <option value="wedge">楔形 Wedge</option>
+                                <option value="none">无明显形态</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">艾略特波浪 · Elliott Wave</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi2',2,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi2',2,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi2',2,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">波浪位置支持入场</div>
+                            <div class="criterion-hint">当前处于第3浪或C浪（最强方向性浪）为最佳</div>
+                            <select class="criterion-select" id="mi2_wave">
+                                <option value="">-- 波浪位置 --</option>
+                                <option value="wave1">第1浪 Wave 1 (初始冲量)</option>
+                                <option value="wave2">第2浪 Wave 2 (回调，可布局)</option>
+                                <option value="wave3">第3浪 Wave 3 ⭐ (最强冲量)</option>
+                                <option value="wave4">第4浪 Wave 4 (回调)</option>
+                                <option value="wave5">第5浪 Wave 5 (末浪，谨慎)</option>
+                                <option value="waveA">A浪 (反向初始)</option>
+                                <option value="waveB">B浪 (反向回调)</option>
+                                <option value="waveC">C浪 ⭐ (反向最强)</option>
+                                <option value="unknown">不确定/无法判断</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+                <div class="mi-note" id="note-mi2">💡 三个维度同时支持方向时，价格行为信号最为可靠。</div>
+            </div>
+        </div>
+
+        <!-- MI3 -->
+        <div class="mi-card" id="card-mi3">
+            <div class="mi-card-header" onclick="toggleCard('mi3')">
+                <div class="mi-icon" style="background:#1e1a00">🔧</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">MI3 — 技术工具 · Technical Indicators</div>
+                    <div class="mi-question">信号是否可靠？Are indicators confirming?</div>
+                </div>
+                <div class="mi-score-badge none" id="badge-mi3">0/4</div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <div class="criteria-group">
+                    <div class="criteria-group-title">布林带 · Bollinger Band</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi3',0,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi3',0,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi3',0,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">布林带给出支持信号</div>
+                            <div class="criterion-hint">价格触及上/下轨反转，或布林带收窄后突破</div>
+                            <select class="criterion-select" id="mi3_bb">
+                                <option value="">-- 布林带状态 --</option>
+                                <option value="lower_touch">触下轨 Lower Band Touch (看涨)</option>
+                                <option value="upper_touch">触上轨 Upper Band Touch (看跌)</option>
+                                <option value="squeeze_break_up">收窄后向上突破 (看涨)</option>
+                                <option value="squeeze_break_down">收窄后向下突破 (看跌)</option>
+                                <option value="mid_support">中轨支撑 (趋势延续)</option>
+                                <option value="mid_resistance">中轨阻力 (趋势延续)</option>
+                                <option value="neutral">无明显信号</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">斐波那契 · Fibonacci Retracement</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi3',1,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi3',1,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi3',1,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">价格回调至斐波那契关键位</div>
+                            <div class="criterion-hint">38.2%、50%、61.8%（黄金比例）是最重要支撑/阻力位</div>
+                            <select class="criterion-select" id="mi3_fib">
+                                <option value="">-- 斐波那契位置 --</option>
+                                <option value="23_6">23.6% (浅回撤)</option>
+                                <option value="38_2">38.2% (中等回撤)</option>
+                                <option value="50">50% (中点)</option>
+                                <option value="61_8">61.8% ⭐ (黄金回撤)</option>
+                                <option value="78_6">78.6% (深回撤)</option>
+                                <option value="no_level">未触及关键位</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">移动平均线 · Moving Average</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi3',2,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi3',2,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi3',2,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">MA排列支持方向</div>
+                            <div class="criterion-hint">多头排列(短>中>长)或空头排列(短&lt;中&lt;长)，金叉/死叉</div>
+                            <select class="criterion-select" id="mi3_ma">
+                                <option value="">-- MA状态 --</option>
+                                <option value="bull_align">多头排列 Bull Alignment (短>中>长)</option>
+                                <option value="bear_align">空头排列 Bear Alignment (短&lt;中&lt;长)</option>
+                                <option value="golden_cross">金叉 Golden Cross ⭐</option>
+                                <option value="death_cross">死叉 Death Cross ⭐</option>
+                                <option value="price_above_ma">价格站上关键MA</option>
+                                <option value="price_below_ma">价格跌破关键MA</option>
+                                <option value="conflicting">MA方向混乱/冲突</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">指标共振 · Indicator Confluence</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi3',3,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi3',3,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi3',3,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">2个以上指标同向共振</div>
+                            <div class="criterion-hint">BB + Fib + MA 三者或其中两者同时给出相同方向信号</div>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+                <div class="mi-note" id="note-mi3">💡 指标的价值在于共振，单一指标信号应谨慎对待。</div>
+            </div>
+        </div>
+
+        <!-- MI4 -->
+        <div class="mi-card" id="card-mi4">
+            <div class="mi-card-header" onclick="toggleCard('mi4')">
+                <div class="mi-icon" style="background:#0a1e1a">⏰</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">MI4 — 入场时机 · Entry Timing</div>
+                    <div class="mi-question">何时进场？When to enter?</div>
+                </div>
+                <div class="mi-score-badge none" id="badge-mi4">0/2</div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <div class="criteria-group">
+                    <div class="criteria-group-title">入场策略选择 · Strategy Type</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi4',0,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi4',0,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi4',0,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">入场时机策略已确定</div>
+                            <div class="criterion-hint">左侧交易（预测反转）或右侧交易（顺势跟进）均有明确计划</div>
+                            <select class="criterion-select" id="mi4_strategy">
+                                <option value="">-- 入场策略 --</option>
+                                <option value="left_side">左侧交易 Left Side (反转提前布局，风险较高)</option>
+                                <option value="right_side">右侧交易 Right Side ⭐ (趋势确认后跟进，推荐)</option>
+                                <option value="breakout">突破入场 Breakout Entry</option>
+                                <option value="pullback">回调入场 Pullback/Retest Entry ⭐</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">入场条件确认 · Entry Confirmation</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi4',1,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi4',1,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi4',1,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">关键支撑/阻力位已识别且已到达</div>
+                            <div class="criterion-hint">价格已到达预设的关键价位，具备入场的时间和价格条件</div>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+                <div class="mi-note" id="note-mi4">💡 右侧交易虽然进场较晚，但胜率更高，适合新手。</div>
+            </div>
+        </div>
+
+        <!-- MI5 -->
+        <div class="mi-card" id="card-mi5">
+            <div class="mi-card-header" onclick="toggleCard('mi5')">
+                <div class="mi-icon" style="background:#1e0a0a">💰</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">MI5 — 风险回报 · Risk & Reward</div>
+                    <div class="mi-question">如何控制风险？How to manage risk?</div>
+                </div>
+                <div class="mi-score-badge none" id="badge-mi5">0/3</div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <!-- Calculator -->
+                <div class="criteria-group">
+                    <div class="criteria-group-title">盈亏比计算器 · R:R Calculator</div>
+                    <div class="calc-row">
+                        <div class="calc-field">
+                            <label>账户金额 (USD)</label>
+                            <input type="number" id="calc_account" value="10000" oninput="calcRR()">
+                        </div>
+                        <div class="calc-field">
+                            <label>风险% / Risk %</label>
+                            <input type="number" id="calc_risk_pct" value="2" min="0.1" max="5" step="0.1" oninput="calcRR()">
+                        </div>
+                        <div class="calc-field">
+                            <label>止损点数 SL (pips)</label>
+                            <input type="number" id="calc_sl" value="50" oninput="calcRR()">
+                        </div>
+                    </div>
+                    <div class="calc-row">
+                        <div class="calc-field">
+                            <label>止盈点数 TP (pips)</label>
+                            <input type="number" id="calc_tp" value="100" oninput="calcRR()">
+                        </div>
+                        <div class="calc-field">
+                            <label>历史胜率 Win Rate %</label>
+                            <input type="number" id="calc_winrate" value="55" min="1" max="99" oninput="calcRR()">
+                        </div>
+                        <div class="calc-field">
+                            <label>&nbsp;</label>
+                            <div style="font-size:11px;color:#555;padding-top:8px;">期望收益 = 胜率×TP - 败率×SL</div>
+                        </div>
+                    </div>
+                    <div class="calc-result">
+                        <div class="calc-output">
+                            <div class="calc-output-label">盈亏比 R:R</div>
+                            <div class="calc-output-value" id="out_rr">2.00</div>
+                        </div>
+                        <div class="calc-output">
+                            <div class="calc-output-label">风险金额 Risk $</div>
+                            <div class="calc-output-value" id="out_risk">$200</div>
+                        </div>
+                        <div class="calc-output">
+                            <div class="calc-output-label">期望收益 Expected</div>
+                            <div class="calc-output-value" id="out_expected">+27.5 pips</div>
+                        </div>
+                        <div class="calc-output">
+                            <div class="calc-output-label">仓位大小 Position</div>
+                            <div class="calc-output-value" id="out_position">4.00 手</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="criteria-group">
+                    <div class="criteria-group-title">风险管理检查 · Risk Checklist</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi5',0,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi5',0,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi5',0,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">止损设在技术位（非随意设置）</div>
+                            <div class="criterion-hint">SL必须放在关键支撑/阻力位之外，有技术依据</div>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi5',1,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi5',1,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi5',1,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">盈亏比 ≥ 1:2</div>
+                            <div class="criterion-hint">止盈至少是止损的2倍距离，才具备正期望值</div>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi5',2,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi5',2,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi5',2,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">单笔风险 ≤ 账户2%</div>
+                            <div class="criterion-hint">严格控制仓位，防止单笔亏损影响整体账户</div>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+                <div class="mi-note" id="note-mi5">💡 风险管理是交易长期存活的关键，永远不要跳过这一步。</div>
+            </div>
+        </div>
+
+        <!-- MI6 -->
+        <div class="mi-card" id="card-mi6">
+            <div class="mi-card-header" onclick="toggleCard('mi6')">
+                <div class="mi-icon" style="background:#150a2a">🚀</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">MI6 — 盈利翻倍 · X-Factor</div>
+                    <div class="mi-question">如何放大利润？How to maximize profit?</div>
+                </div>
+                <div class="mi-score-badge none" id="badge-mi6">0/3</div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <div class="criteria-group">
+                    <div class="criteria-group-title">X-Factor 加仓条件 · Scaling Conditions</div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi6',0,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi6',0,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi6',0,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">趋势已确认，动量充足</div>
+                            <div class="criterion-hint">只有在趋势明确建立后才可以考虑加仓策略</div>
+                            <select class="criterion-select" id="mi6_trend_strength">
+                                <option value="">-- 趋势强度 --</option>
+                                <option value="strong">强趋势 Strong Trend ⭐ (可加仓)</option>
+                                <option value="moderate">中等趋势 Moderate</option>
+                                <option value="weak">弱趋势 Weak (不建议加仓)</option>
+                                <option value="ranging">震荡市 Ranging (避免加仓)</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi6',1,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi6',1,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi6',1,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">初始仓位已盈利，止损移至成本价</div>
+                            <div class="criterion-hint">加仓前必须先锁定部分利润，将止损移至成本线，确保无风险</div>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                    <div class="criterion">
+                        <div class="criterion-check">
+                            <button class="check-btn yes" onclick="toggleCheck(this,'mi6',2,'yes')">✓</button>
+                            <button class="check-btn no" onclick="toggleCheck(this,'mi6',2,'no')">✗</button>
+                            <button class="check-btn na" onclick="toggleCheck(this,'mi6',2,'na')">—</button>
+                        </div>
+                        <div class="criterion-content">
+                            <div class="criterion-label">加仓后总风险 ≤ 初始风险</div>
+                            <div class="criterion-hint">X-Factor核心原则：加仓后的综合止损金额不超过原始风险金额</div>
+                            <select class="criterion-select" id="mi6_scale_method">
+                                <option value="">-- 加仓方式 --</option>
+                                <option value="pyramid">金字塔加仓 Pyramid (递减，最保守)</option>
+                                <option value="partial_tp">分批止盈后加仓 Partial TP + Scale</option>
+                                <option value="trailing_sl">追踪止损 Trailing SL</option>
+                                <option value="fixed">固定比例加仓 Fixed Ratio</option>
+                                <option value="none">不加仓 No Scaling</option>
+                            </select>
+                        </div>
+                        <div class="criterion-weight">×1</div>
+                    </div>
+                </div>
+                <div class="mi-note" id="note-mi6">💡 X-Factor是在风险可控的前提下放大利润，绝非随意加码。</div>
+            </div>
+        </div>
+
+        <!-- Final Summary Card -->
+        <div class="mi-card" id="card-summary" style="border-color:#2a2a2a">
+            <div class="mi-card-header" onclick="toggleCard('summary')">
+                <div class="mi-icon" style="background:#111">📋</div>
+                <div class="mi-header-text">
+                    <div class="mi-title">交易决策摘要 · Trade Decision Summary</div>
+                    <div class="mi-question">综合结论与建议</div>
+                </div>
+                <div class="mi-chevron">▼</div>
+            </div>
+            <div class="mi-body">
+                <table class="summary-table" id="summaryTable">
+                    <thead>
+                        <tr>
+                            <th>指标</th>
+                            <th>核心问题</th>
+                            <th>评分</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryBody">
+                        <tr><td colspan="4" style="text-align:center;color:#444;padding:20px;">点击"开始分析"生成摘要</td></tr>
+                    </tbody>
+                </table>
+                <div class="mi-note" id="finalNote" style="margin-top:12px">
+                    📊 请完整填写所有MI指标后点击"开始分析"获取交易建议。
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+const state = {
+    direction: 'neutral',
+    timeframe: 'D',
+    checks: {
+        mi1: [null, null, null],
+        mi2: [null, null, null],
+        mi3: [null, null, null, null],
+        mi4: [null, null],
+        mi5: [null, null, null],
+        mi6: [null, null, null]
+    },
+    scores: { mi1: 0, mi2: 0, mi3: 0, mi4: 0, mi5: 0, mi6: 0 },
+    maxScores: { mi1: 3, mi2: 3, mi3: 4, mi4: 2, mi5: 3, mi6: 3 }
+};
+
+// ── Timeframe ──────────────────────────────────────────
+function setTF(btn, tf) {
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.timeframe = tf;
+}
+
+// ── Direction ──────────────────────────────────────────
+function setDirection(dir) {
+    state.direction = dir;
+    document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('dir' + dir.charAt(0).toUpperCase() + dir.slice(1)).classList.add('active');
+}
+
+// ── Card toggle ────────────────────────────────────────
+function toggleCard(id) {
+    const card = document.getElementById('card-' + id);
+    card.classList.toggle('expanded');
+}
+
+// ── Check button logic ─────────────────────────────────
+function toggleCheck(btn, mi, idx, val) {
+    const group = btn.closest('.criterion-check');
+    const buttons = group.querySelectorAll('.check-btn');
+
+    // Toggle off if already active
+    const isActive = btn.classList.contains('active');
+    buttons.forEach(b => b.classList.remove('active'));
+
+    if (!isActive) {
+        btn.classList.add('active');
+        state.checks[mi][idx] = val;
+    } else {
+        state.checks[mi][idx] = null;
+    }
+
+    updateMIScore(mi);
+    updateProgress();
+}
+
+function updateMIScore(mi) {
+    const checks = state.checks[mi];
+    const score = checks.filter(c => c === 'yes').length;
+    state.scores[mi] = score;
+    const max = state.maxScores[mi];
+
+    const badge = document.getElementById('badge-' + mi);
+    badge.textContent = score + '/' + max;
+
+    const pct = score / max;
+    if (score === 0) { badge.className = 'mi-score-badge none'; }
+    else if (pct < 0.4) { badge.className = 'mi-score-badge low'; }
+    else if (pct < 0.8) { badge.className = 'mi-score-badge mid'; }
+    else { badge.className = 'mi-score-badge high'; }
+
+    // update bar
+    const bar = document.getElementById('bar-' + mi);
+    bar.style.width = (score / max * 100) + '%';
+    document.getElementById('barscore-' + mi).textContent = score + '/' + max;
+}
+
+function updateProgress() {
+    const filled = Object.values(state.checks).flat().filter(c => c !== null).length;
+    const total = Object.values(state.checks).flat().length;
+    document.getElementById('progressFill').style.width = (filled / total * 100) + '%';
+}
+
+// ── R:R Calculator ─────────────────────────────────────
+function calcRR() {
+    const account = parseFloat(document.getElementById('calc_account').value) || 10000;
+    const riskPct = parseFloat(document.getElementById('calc_risk_pct').value) || 2;
+    const sl = parseFloat(document.getElementById('calc_sl').value) || 50;
+    const tp = parseFloat(document.getElementById('calc_tp').value) || 100;
+    const wr = parseFloat(document.getElementById('calc_winrate').value) || 55;
+
+    const riskAmt = account * riskPct / 100;
+    const rr = tp / sl;
+    const expected = (wr / 100) * tp - ((100 - wr) / 100) * sl;
+    const posSize = riskAmt / sl;
+
+    const rrEl = document.getElementById('out_rr');
+    rrEl.textContent = rr.toFixed(2) + ':1';
+    rrEl.className = 'calc-output-value ' + (rr >= 2 ? 'good' : rr >= 1.5 ? 'warn' : 'bad');
+
+    document.getElementById('out_risk').textContent = '$' + riskAmt.toFixed(0);
+
+    const expEl = document.getElementById('out_expected');
+    expEl.textContent = (expected >= 0 ? '+' : '') + expected.toFixed(1) + ' pips';
+    expEl.className = 'calc-output-value ' + (expected > 0 ? 'good' : 'bad');
+
+    document.getElementById('out_position').textContent = posSize.toFixed(2) + ' 手';
+
+    // Auto-check MI5 criteria based on calculator
+    const rrCheck = rr >= 2;
+    const riskCheck = riskPct <= 2;
+    // We don't auto-toggle buttons but we can hint
+}
+
+// ── Main Analyze ───────────────────────────────────────
+function analyze() {
+    // expand all cards
+    document.querySelectorAll('.mi-card').forEach(c => c.classList.add('expanded'));
+
+    const mids = ['mi1','mi2','mi3','mi4','mi5','mi6'];
+    mids.forEach(m => updateMIScore(m));
+
+    const total = Object.values(state.scores).reduce((a, b) => a + b, 0);
+    const maxTotal = 18;
+    const pct = total / maxTotal;
+
+    // Update ring
+    const circumference = 326.7;
+    const offset = circumference * (1 - pct);
+    const circle = document.getElementById('scoreCircle');
+    circle.style.strokeDashoffset = offset;
+
+    // Color ring by score
+    let ringColor, signalClass, signalText;
+    if (total <= 4) {
+        ringColor = '#555'; signalClass = 'wait'; signalText = '等待观望 WAIT';
+    } else if (total <= 7) {
+        if (state.direction === 'bull') { ringColor = '#4ade80'; signalClass = 'weak-bull'; signalText = '弱看涨 WEAK BUY'; }
+        else if (state.direction === 'bear') { ringColor = '#f87171'; signalClass = 'weak-bear'; signalText = '弱看跌 WEAK SELL'; }
+        else { ringColor = '#ffd700'; signalClass = 'wait'; signalText = '条件不足 INSUFFICIENT'; }
+    } else if (total <= 11) {
+        if (state.direction === 'bull') { ringColor = '#00d084'; signalClass = 'bull'; signalText = '看涨信号 BUY'; }
+        else if (state.direction === 'bear') { ringColor = '#ff4444'; signalClass = 'bear'; signalText = '看跌信号 SELL'; }
+        else { ringColor = '#ffd700'; signalClass = 'wait'; signalText = '需明确方向'; }
+    } else {
+        if (state.direction === 'bull') { ringColor = '#00ff99'; signalClass = 'strong-bull'; signalText = '强势看涨 STRONG BUY'; }
+        else if (state.direction === 'bear') { ringColor = '#ff2222'; signalClass = 'strong-bear'; signalText = '强势看跌 STRONG SELL'; }
+        else { ringColor = '#a78bfa'; signalClass = 'bull'; signalText = '高度共振信号'; }
+    }
+
+    circle.style.stroke = ringColor;
+    document.getElementById('scoreNumber').style.color = ringColor;
+    document.getElementById('scoreNumber').textContent = total;
+
+    const badge = document.getElementById('signalBadge');
+    badge.className = 'signal-badge ' + signalClass;
+    badge.innerHTML = '<div class="signal-dot"></div><span>' + signalText + '</span>';
+
+    // Description
+    const symbol = document.getElementById('symbolInput').value.toUpperCase() || 'SYMBOL';
+    const descMap = {
+        'wait': `${symbol} · ${state.timeframe} — 当前条件不足，建议等待更多确认信号`,
+        'weak-bull': `${symbol} · ${state.timeframe} — 有一定看涨倾向，但信号不够强，需额外确认`,
+        'bull': `${symbol} · ${state.timeframe} — MI6系统给出看涨信号，可考虑布局多单`,
+        'strong-bull': `${symbol} · ${state.timeframe} — 强势看涨！多项指标高度共振，高确信度做多机会`,
+        'weak-bear': `${symbol} · ${state.timeframe} — 有一定看跌倾向，但信号不够强，需额外确认`,
+        'bear': `${symbol} · ${state.timeframe} — MI6系统给出看跌信号，可考虑布局空单`,
+        'strong-bear': `${symbol} · ${state.timeframe} — 强势看跌！多项指标高度共振，高确信度做空机会`,
+    };
+    document.getElementById('signalDesc').textContent = descMap[signalClass] || '';
+
+    // MI card borders
+    mids.forEach(mi => {
+        const card = document.getElementById('card-' + mi);
+        const s = state.scores[mi];
+        const mx = state.maxScores[mi];
+        card.className = 'mi-card expanded ' + (s === mx ? 'passed' : s > 0 ? 'partial' : 'failed');
+    });
+
+    // Update notes
+    updateNotes(total, signalClass);
+    updateSummary(mids, signalClass, total);
+}
+
+function updateNotes(total, signalClass) {
+    const isBull = state.direction === 'bull';
+    const isBear = state.direction === 'bear';
+
+    const notes = {
+        'mi1': isBull
+            ? '✅ 宏观面支持看涨方向。货币政策和资金流向是最强宏观信号。'
+            : isBear
+            ? '✅ 宏观面支持看跌方向。注意央行政策转向时的反向风险。'
+            : '💡 宏观分析是趋势的根基。三者一致对齐时，信号最强。',
+        'mi2': state.scores['mi2'] >= 2
+            ? '✅ 价格行为支持方向！多个维度给出相同信号，增加可信度。'
+            : state.scores['mi2'] === 1
+            ? '⚠️ 价格行为信号部分支持，需要更多确认。'
+            : '❌ 价格行为无明确方向，建议等待更清晰的K线形态。',
+        'mi3': state.scores['mi3'] >= 3
+            ? '✅ 技术指标高度共振！BB + Fib + MA 多重验证，信号可靠。'
+            : '💡 指标的价值在于共振，单一指标信号应谨慎对待。',
+        'mi4': state.scores['mi4'] === 2
+            ? '✅ 入场条件已就绪，右侧交易等待确认突破或回测入场。'
+            : '⚠️ 入场时机尚未成熟，建议等待价格到达关键支撑/阻力位。',
+        'mi5': state.scores['mi5'] === 3
+            ? '✅ 风险管理到位！止损合理，盈亏比充足，仓位适当。'
+            : state.scores['mi5'] === 0
+            ? '❌ 风险管理未完成！在没有合理止损的情况下不应该入场。'
+            : '⚠️ 请确认止损位置、盈亏比≥1:2、单笔风险≤2%。',
+        'mi6': state.scores['mi6'] === 3
+            ? '✅ X-Factor条件满足！可在趋势确认后考虑分批加仓策略。'
+            : '💡 X-Factor是在风险可控的前提下放大利润，绝非随意加码。'
+    };
+
+    Object.keys(notes).forEach(mi => {
+        const el = document.getElementById('note-' + mi);
+        if (!el) return;
+        el.textContent = notes[mi];
+        const sc = state.scores[mi];
+        const mx = state.maxScores[mi];
+        el.className = 'mi-note ' + (sc === mx ? 'bull-note' : sc >= mx/2 ? 'neutral-note' : '');
+    });
+}
+
+function updateSummary(mids, signalClass, total) {
+    const miData = {
+        mi1: { name: 'MI1 汇市趋势', q: '市场往哪去？' },
+        mi2: { name: 'MI2 价格行为', q: '现在在哪里？' },
+        mi3: { name: 'MI3 技术工具', q: '信号是否可靠？' },
+        mi4: { name: 'MI4 入场时机', q: '何时进场？' },
+        mi5: { name: 'MI5 风险回报', q: '如何控制风险？' },
+        mi6: { name: 'MI6 盈利翻倍', q: '如何放大利润？' },
+    };
+
+    const tbody = document.getElementById('summaryBody');
+    tbody.innerHTML = mids.map(mi => {
+        const s = state.scores[mi];
+        const mx = state.maxScores[mi];
+        const pct = s / mx;
+        const statusClass = pct >= 1 ? 'bull' : pct >= 0.5 ? 'neutral' : 'bear';
+        const statusText = pct >= 1 ? '✓ 通过' : pct >= 0.5 ? '~ 部分' : '✗ 不足';
+        return `<tr>
+            <td>${miData[mi].name}</td>
+            <td style="color:#666">${miData[mi].q}</td>
+            <td><span class="tag ${statusClass}">${s}/${mx}</span></td>
+            <td style="color:${pct>=1?'#00d084':pct>=0.5?'#ffd700':'#666'}">${statusText}</td>
+        </tr>`;
+    }).join('');
+
+    // final note
+    const symbol = document.getElementById('symbolInput').value.toUpperCase() || 'SYMBOL';
+    const rr = parseFloat(document.getElementById('out_rr').textContent) || 0;
+
+    let advice = '';
+    const isBull = state.direction === 'bull';
+    const isBear = state.direction === 'bear';
+
+    if (total <= 4) {
+        advice = `⛔ 综合评分过低 (${total}/18)。当前市场条件不满足MI6系统标准，建议耐心等待，不要强行入场。`;
+    } else if (total <= 7) {
+        advice = `⚠️ 综合评分偏低 (${total}/18)。有一定方向信号但条件不充分。建议继续观察，等待更多MI指标对齐后再行动。`;
+    } else if (total <= 11) {
+        const dir = isBull ? '多单 (Buy)' : isBear ? '空单 (Sell)' : '方向待确认';
+        advice = `📊 综合评分 ${total}/18，信号中等偏强。可考虑${dir}，但需确保MI5风险管理完备，建议使用小仓位试探入场。`;
+    } else {
+        const dir = isBull ? '做多' : isBear ? '做空' : '高度共振';
+        advice = `🚀 综合评分 ${total}/18，MI6系统高度共振！强势${dir}信号，所有主要指标对齐。在确认止损和盈亏比后，可以执行交易计划。`;
+    }
+
+    document.getElementById('finalNote').textContent = advice;
+}
+
+// ── Reset ──────────────────────────────────────────────
+function resetAll() {
+    Object.keys(state.checks).forEach(mi => {
+        state.checks[mi] = state.checks[mi].map(() => null);
+        state.scores[mi] = 0;
+    });
+
+    document.querySelectorAll('.check-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.criterion-select').forEach(s => s.value = '');
+
+    ['mi1','mi2','mi3','mi4','mi5','mi6'].forEach(mi => {
+        document.getElementById('badge-' + mi).textContent = '0/' + state.maxScores[mi];
+        document.getElementById('badge-' + mi).className = 'mi-score-badge none';
+        document.getElementById('bar-' + mi).style.width = '0%';
+        document.getElementById('barscore-' + mi).textContent = '0/' + state.maxScores[mi];
+        document.getElementById('note-' + mi).className = 'mi-note';
+    });
+
+    const notes = {
+        mi1: '💡 宏观分析是趋势的根基。三者一致对齐时，信号最强。',
+        mi2: '💡 三个维度同时支持方向时，价格行为信号最为可靠。',
+        mi3: '💡 指标的价值在于共振，单一指标信号应谨慎对待。',
+        mi4: '💡 右侧交易虽然进场较晚，但胜率更高，适合新手。',
+        mi5: '💡 风险管理是交易长期存活的关键，永远不要跳过这一步。',
+        mi6: '💡 X-Factor是在风险可控的前提下放大利润，绝非随意加码。',
+    };
+    Object.keys(notes).forEach(mi => {
+        const el = document.getElementById('note-' + mi);
+        if (el) el.textContent = notes[mi];
+    });
+
+    document.querySelectorAll('.mi-card').forEach(c => {
+        c.className = c.id === 'card-mi1' || c.id === 'card-summary' ? 'mi-card expanded' : 'mi-card';
+    });
+
+    document.getElementById('scoreNumber').textContent = '0';
+    document.getElementById('scoreNumber').style.color = '#7c3aed';
+    document.getElementById('scoreCircle').style.strokeDashoffset = '326.7';
+    document.getElementById('scoreCircle').style.stroke = '#7c3aed';
+    document.getElementById('signalBadge').className = 'signal-badge wait';
+    document.getElementById('signalBadge').innerHTML = '<div class="signal-dot"></div><span>等待分析</span>';
+    document.getElementById('signalDesc').textContent = '请填写各MI指标后点击分析';
+    document.getElementById('summaryBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#444;padding:20px;">点击"开始分析"生成摘要</td></tr>';
+    document.getElementById('finalNote').textContent = '📊 请完整填写所有MI指标后点击"开始分析"获取交易建议。';
+    document.getElementById('progressFill').style.width = '0%';
+
+    setDirection('neutral');
+}
+
+function scrollToMI(mi) {
+    const card = document.getElementById('card-' + mi);
+    card.classList.add('expanded');
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Init calculator
+calcRR();
+</script>
+</body>
+</html>

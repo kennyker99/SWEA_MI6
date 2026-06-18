@@ -621,7 +621,10 @@
                 <div class="header-subtitle">REAL-TIME US LIQUIDITY DASHBOARD</div>
             </div>
         </div>
-        <button class="refresh-btn" onclick="refreshData()">REFRESH</button>
+        <div style="display:flex;gap:8px;align-items:center">
+            <a href="mi6-scanner.html" style="background:transparent;border:1px solid #404040;color:#a78bfa;padding:8px 12px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-decoration:none;transition:all 0.2s" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#404040'">MI6 趋势检测</a>
+            <button class="refresh-btn" onclick="refreshData()">REFRESH</button>
+        </div>
     </div>
 
     <!-- 主容器 -->
