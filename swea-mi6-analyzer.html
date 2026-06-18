@@ -39,6 +39,25 @@
 </head>
 <body class="terminal-grid">
 
+<!-- Safelist: pre-generate dynamic color classes so the Tailwind CDN JIT
+     creates them at startup (prevents first-click flash). Hidden, never shown. -->
+<div hidden aria-hidden="true" class="
+  border-emerald-500/25 bg-emerald-500/5 border-red-500/25 bg-red-500/5
+  text-emerald-400 bg-emerald-500/10 border-emerald-500/30
+  text-red-400 bg-red-500/10 border-red-500/30
+  text-slate-400 bg-slate-700/40 border-slate-600/30
+  bg-emerald-500/20 border-emerald-400/70 text-emerald-300
+  bg-red-500/20 border-red-400/70 text-red-300
+  bg-slate-600/40 border-slate-400/50 text-slate-300
+  text-emerald-500 text-red-500 text-amber-400 text-slate-600
+  bg-emerald-500/[0.08] border-emerald-500/40 border-emerald-500/25
+  bg-red-500/[0.08] border-red-500/40 border-red-500/25
+  bg-amber-500/10 border-amber-500/35 bg-slate-500/[0.08] border-slate-500/25
+  bg-emerald-500/15 bg-red-500/15 bg-amber-500/15 border-amber-500/30
+  bg-slate-700/30 border-slate-600/20 bg-emerald-500 bg-red-500 bg-slate-700
+  border-emerald-400/50 border-red-400/50
+"></div>
+
 <!-- ════════════ Layout: Sidebar + Main ════════════ -->
 <div class="min-h-screen flex">
 
@@ -562,22 +581,7 @@ function bindAnalyzer(){
   $("#globalNotes").oninput = e => analyzer.notes = e.target.value;
 
   // indicator cards
-  document.querySelectorAll(".indicator-card").forEach(card => {
-    const id = card.dataset.id;
-    card.querySelectorAll(".state-btn").forEach(btn => {
-      btn.onclick = () => { analyzer.indicators[id].state = btn.dataset.state; renderAnalyzer(); };
-    });
-    const ta = card.querySelector(".notes-input");
-    ta.oninput = e => { analyzer.indicators[id].notes = e.target.value; };
-    const refToggle = card.querySelector(".ref-toggle");
-    refToggle.onclick = () => {
-      const body = card.querySelector(".ref-body");
-      const chev = refToggle.querySelector(".chev");
-      body.classList.toggle("hidden");
-      chev.style.transform = body.classList.contains("hidden") ? "" : "rotate(180deg)";
-    };
-    bindImgSlot(card.querySelector(".img-slot"), id);
-  });
+  document.querySelectorAll(".indicator-card").forEach(card => bindIndicatorCard(card, card.dataset.id));
 
   // chart upload
   bindChartSlot();
@@ -590,6 +594,41 @@ function bindAnalyzer(){
   // mobile verdict toggle
   const mvt = $("#mobileVerdictToggle");
   if (mvt) mvt.onclick = () => $("#mobileVerdictBody").classList.toggle("hidden");
+}
+
+// Bind one indicator card's events. Used on first render and after a
+// targeted in-place update (avoids re-rendering the whole page → no flicker).
+function bindIndicatorCard(card, id){
+  card.querySelectorAll(".state-btn").forEach(btn => {
+    btn.onclick = () => { analyzer.indicators[id].state = btn.dataset.state; updateIndicatorCard(id); refreshVerdict(); };
+  });
+  const ta = card.querySelector(".notes-input");
+  ta.oninput = e => { analyzer.indicators[id].notes = e.target.value; };
+  const refToggle = card.querySelector(".ref-toggle");
+  refToggle.onclick = () => {
+    const body = card.querySelector(".ref-body");
+    const chev = refToggle.querySelector(".chev");
+    body.classList.toggle("hidden");
+    chev.style.transform = body.classList.contains("hidden") ? "" : "rotate(180deg)";
+  };
+  bindImgSlot(card.querySelector(".img-slot"), id);
+}
+
+// Replace a single card in place (state pill / border / button colors)
+// without touching the rest of the DOM — eliminates the full-page flash.
+function updateIndicatorCard(id){
+  const old = document.querySelector(`.indicator-card[data-id="${id}"]`);
+  if (!old) return;
+  const refOpen = old.querySelector(".ref-body") && !old.querySelector(".ref-body").classList.contains("hidden");
+  const tmp = document.createElement("div");
+  tmp.innerHTML = indicatorCardHTML(id);
+  const fresh = tmp.firstElementChild;
+  if (refOpen){
+    fresh.querySelector(".ref-body").classList.remove("hidden");
+    fresh.querySelector(".chev").style.transform = "rotate(180deg)";
+  }
+  old.replaceWith(fresh);
+  bindIndicatorCard(fresh, id);
 }
 
 function bindImgSlot(slot, id){
