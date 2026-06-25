@@ -1,16 +1,13 @@
-// SWEA MI6 — History Page (Plan C Redesign)
-// Design: Financial Professional Deep Blue
-// Features: Tab-based layout (Records / Stats Dashboard), filter, detail modal, image preview
-
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search, Trash2, TrendingUp, TrendingDown, Minus,
-  Calendar, Clock, X, ZoomIn, FileText, BarChart2, Pencil, Check,
+  Calendar, Clock, X, ZoomIn, FileText, BarChart2, Pencil, ImagePlus,
 } from "lucide-react";
 import {
   getVerdictColor,
   TIMEFRAMES,
   type AnalysisRecord,
+  type TradeRecord,
 } from "@/lib/swea-data";
 import { apiLoadRecords, apiDeleteRecord, apiUpdateRecord } from "@/lib/api";
 import { toast } from "sonner";
@@ -42,21 +39,19 @@ export default function HistoryPage() {
   const [filterTimeframe, setFilterTimeframe] = useState("all");
   const [selectedRecord, setSelectedRecord] = useState<AnalysisRecord | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [editingRecord, setEditingRecord] = useState<AnalysisRecord | null>(null);
 
   useEffect(() => {
     apiLoadRecords().then(setRecords).catch(() => toast.error("加载记录失败"));
   }, []);
 
-  const handleUpdatePnl = async (record: AnalysisRecord, pnl: number | undefined) => {
-    const updated: AnalysisRecord = {
-      ...record,
-      tradeRecord: { ...record.tradeRecord, actualPnl: pnl },
-    };
+  const handleUpdate = async (updated: AnalysisRecord) => {
     try {
       await apiUpdateRecord(updated);
       setRecords((prev) => prev.map((r) => r.id === updated.id ? updated : r));
       if (selectedRecord?.id === updated.id) setSelectedRecord(updated);
-      toast.success("实际盈亏已更新");
+      setEditingRecord(null);
+      toast.success("记录已更新");
     } catch {
       toast.error("更新失败，请重试");
     }
@@ -75,8 +70,6 @@ export default function HistoryPage() {
       toast.error("删除失败");
     }
   };
-
-  const allPairs = Array.from(new Set(records.map((r) => r.pair))).sort();
 
   const filtered = records.filter((r) => {
     const pairMatch = !searchPair || r.pair.toLowerCase().includes(searchPair.toLowerCase());
@@ -100,7 +93,6 @@ export default function HistoryPage() {
       {/* ── Sticky Header ── */}
       <div className="border-b border-white/8 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          {/* Tab bar */}
           <div className="flex items-center gap-1 pt-3">
             <button
               onClick={() => setActiveTab("records")}
@@ -133,7 +125,6 @@ export default function HistoryPage() {
             </button>
           </div>
 
-          {/* Filter bar — only shown on records tab */}
           {activeTab === "records" && (
             <div className="flex flex-wrap gap-2 py-2.5">
               <div className="relative">
@@ -193,7 +184,7 @@ export default function HistoryPage() {
                 onSelect={() => setSelectedRecord(selectedRecord?.id === record.id ? null : record)}
                 onDelete={(e) => handleDelete(record.id, e)}
                 onImageClick={(src) => setLightboxSrc(src)}
-                onUpdatePnl={(pnl) => handleUpdatePnl(record, pnl)}
+                onEdit={(e) => { e.stopPropagation(); setEditingRecord(record); }}
               />
             ))}
           </div>
@@ -206,6 +197,15 @@ export default function HistoryPage() {
           record={selectedRecord}
           onClose={() => setSelectedRecord(null)}
           onImageClick={(src) => setLightboxSrc(src)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingRecord && (
+        <EditRecordModal
+          record={editingRecord}
+          onClose={() => setEditingRecord(null)}
+          onSave={handleUpdate}
         />
       )}
 
@@ -236,48 +236,21 @@ export default function HistoryPage() {
 // ─── Record Row ───────────────────────────────────────────────────────────────
 
 function RecordRow({
-  record, isSelected, onSelect, onDelete, onImageClick, onUpdatePnl,
+  record, isSelected, onSelect, onDelete, onImageClick, onEdit,
 }: {
   record: AnalysisRecord;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: (e: React.MouseEvent) => void;
   onImageClick: (src: string) => void;
-  onUpdatePnl: (pnl: number | undefined) => Promise<void>;
+  onEdit: (e: React.MouseEvent) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [pnlInput, setPnlInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const startEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPnlInput(record.tradeRecord?.actualPnl !== undefined ? String(record.tradeRecord.actualPnl) : "");
-    setEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const handleSavePnl = async (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation();
-    setSaving(true);
-    const val = pnlInput.trim() === "" ? undefined : parseFloat(pnlInput);
-    await onUpdatePnl(isNaN(val as number) ? undefined : val);
-    setSaving(false);
-    setEditing(false);
-  };
-
   const colorClass = getVerdictColor(record.verdict.signal);
   const date = new Date(record.date);
   const isBull = record.verdict.signal.includes("bullish");
   const isBear = record.verdict.signal.includes("bearish");
   const isMixed = record.verdict.signal === "mixed";
   const pnl = record.tradeRecord?.actualPnl;
-  const hasTrade = record.tradeRecord && (
-    record.tradeRecord.entryPrice !== undefined ||
-    record.tradeRecord.takeProfit !== undefined ||
-    record.tradeRecord.stopLoss !== undefined ||
-    record.tradeRecord.actualPnl !== undefined
-  );
 
   const borderBg = isBull
     ? "border-emerald-500/20 bg-emerald-500/5"
@@ -294,13 +267,10 @@ function RecordRow({
       }`}
       onClick={onSelect}
     >
-      <div className="px-4 py-3 flex items-center gap-4">
+      <div className="px-4 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap">
         {/* Pair + timeframe */}
         <div className="flex-shrink-0 min-w-[72px]">
-          <div
-            className="text-sm font-bold text-slate-100"
-            style={{ fontFamily: "'Fira Code', monospace" }}
-          >
+          <div className="text-sm font-bold text-slate-100" style={{ fontFamily: "'Fira Code', monospace" }}>
             {record.pair}
           </div>
           <div className="text-[10px] text-slate-600 font-mono">{record.timeframe}</div>
@@ -335,6 +305,17 @@ function RecordRow({
           </button>
         )}
 
+        {/* PnL badge */}
+        {pnl !== undefined && (
+          <span className={`flex-shrink-0 text-xs font-bold font-mono px-2 py-0.5 rounded-full border ${
+            pnl >= 0
+              ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+              : "text-red-400 bg-red-500/10 border-red-500/20"
+          }`}>
+            {pnl >= 0 ? "+" : ""}{pnl}
+          </span>
+        )}
+
         <div className="flex-1" />
 
         {/* Date */}
@@ -345,52 +326,14 @@ function RecordRow({
           {date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
         </div>
 
-        {/* PnL + Edit */}
-        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          {editing ? (
-            <div className="flex items-center gap-1">
-              <input
-                ref={inputRef}
-                type="number"
-                step="any"
-                value={pnlInput}
-                onChange={(e) => setPnlInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSavePnl(e); if (e.key === "Escape") setEditing(false); }}
-                placeholder="实际盈亏"
-                className="w-24 h-7 px-2 rounded-lg border border-teal-500/40 bg-slate-800 text-teal-300 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-teal-500/50"
-              />
-              <button
-                onClick={handleSavePnl}
-                disabled={saving}
-                className="h-7 w-7 flex items-center justify-center rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 transition-colors disabled:opacity-50"
-              >
-                <Check size={12} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setEditing(false); }}
-                className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-500 hover:text-slate-300 transition-colors"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {pnl !== undefined && (
-                <span className={`text-xs font-bold font-mono ${pnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {pnl >= 0 ? "+" : ""}{pnl}
-                </span>
-              )}
-              <button
-                onClick={startEdit}
-                title="修改实际盈亏"
-                className="h-7 px-2 flex items-center gap-1 rounded-lg border border-white/8 hover:border-teal-500/30 text-slate-600 hover:text-teal-400 text-[11px] transition-colors"
-              >
-                <Pencil size={10} />
-                <span className="hidden sm:inline">修改</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Edit button */}
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 text-[11px] font-medium transition-colors flex-shrink-0"
+        >
+          <Pencil size={11} />
+          <span>修改</span>
+        </button>
 
         {/* Delete */}
         <button
@@ -408,16 +351,12 @@ function RecordRow({
             {Object.entries(record.indicators).map(([key, val]) => (
               <div key={key} className="rounded-lg border border-white/8 bg-slate-900/40 p-3">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold text-slate-400">
-                    {INDICATOR_NAMES[key] ?? key}
-                  </span>
-                  <span
-                    className={`flex-shrink-0 ${
-                      val.state === "bullish" ? "text-emerald-400"
-                      : val.state === "bearish" ? "text-red-400"
-                      : "text-slate-500"
-                    }`}
-                  >
+                  <span className="text-[11px] font-semibold text-slate-400">{INDICATOR_NAMES[key] ?? key}</span>
+                  <span className={`flex-shrink-0 ${
+                    val.state === "bullish" ? "text-emerald-400"
+                    : val.state === "bearish" ? "text-red-400"
+                    : "text-slate-500"
+                  }`}>
                     {val.state === "bullish" ? <TrendingUp size={12} />
                      : val.state === "bearish" ? <TrendingDown size={12} />
                      : <Minus size={12} />}
@@ -447,11 +386,11 @@ function RecordRow({
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">{record.notes}</p>
             </div>
           )}
-          {hasTrade && (
+          {record.tradeRecord && (record.tradeRecord.entryPrice !== undefined || record.tradeRecord.actualPnl !== undefined) && (
             <div className="rounded-lg border border-teal-500/20 bg-teal-500/5 p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-teal-500/70 uppercase tracking-wider">交易记录</span>
-                {record.tradeRecord?.status && (
+                {record.tradeRecord.status && (
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                     record.tradeRecord.status === "closed"
                       ? "text-teal-400 border-teal-500/30 bg-teal-500/10"
@@ -463,21 +402,214 @@ function RecordRow({
               </div>
               <div className="grid grid-cols-4 gap-2 text-center">
                 {[
-                  { label: "入场价位", val: record.tradeRecord?.entryPrice, color: "text-slate-200" },
-                  { label: "止盈 TP",  val: record.tradeRecord?.takeProfit,  color: "text-slate-200" },
-                  { label: "止损 SL",  val: record.tradeRecord?.stopLoss,   color: "text-red-400" },
-                  { label: "实际盈亏", val: record.tradeRecord?.actualPnl,  color: record.tradeRecord?.actualPnl !== undefined && record.tradeRecord.actualPnl >= 0 ? "text-emerald-400" : "text-red-400" },
+                  { label: "入场价位", val: record.tradeRecord.entryPrice, color: "text-slate-200" },
+                  { label: "止盈 TP",  val: record.tradeRecord.takeProfit, color: "text-slate-200" },
+                  { label: "止损 SL",  val: record.tradeRecord.stopLoss,   color: "text-red-400" },
+                  { label: "实际盈亏", val: record.tradeRecord.actualPnl,  color: (record.tradeRecord.actualPnl ?? 0) >= 0 ? "text-emerald-400" : "text-red-400" },
                 ].map(({ label, val, color }) => (
                   <div key={label} className="rounded-lg bg-slate-900/50 p-2">
                     <div className="text-[10px] text-slate-600 mb-1">{label}</div>
                     <div className={`text-xs font-bold font-mono ${color}`}>
-                      {val !== undefined ? (label === "实际盈亏" && val >= 0 ? `+${val}` : String(val)) : "—"}
+                      {val !== undefined ? (label === "实际盈亏" && (val as number) >= 0 ? `+${val}` : String(val)) : "—"}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Edit Record Modal ────────────────────────────────────────────────────────
+
+function EditRecordModal({
+  record, onClose, onSave,
+}: {
+  record: AnalysisRecord;
+  onClose: () => void;
+  onSave: (updated: AnalysisRecord) => Promise<void>;
+}) {
+  const [trade, setTrade] = useState<TradeRecord>(record.tradeRecord ?? { status: "open" });
+  const [notes, setNotes] = useState(record.notes ?? "");
+  const [chartImage, setChartImage] = useState<string | undefined>(record.chartImage);
+  const [saving, setSaving] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { toast.error("图片大小不能超过 8MB"); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => setChartImage(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({
+      ...record,
+      notes: notes.trim() || undefined,
+      chartImage,
+      tradeRecord: (trade.entryPrice || trade.takeProfit || trade.stopLoss || trade.actualPnl !== undefined) ? trade : undefined,
+    });
+    setSaving(false);
+  };
+
+  const setTradeField = (key: keyof TradeRecord, raw: string) => {
+    if (key === "status") {
+      setTrade((p) => ({ ...p, status: raw as "open" | "closed" }));
+    } else {
+      const val = raw === "" ? undefined : parseFloat(raw);
+      setTrade((p) => ({ ...p, [key]: isNaN(val as number) ? undefined : val }));
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
+          <div>
+            <div className="text-sm font-bold text-slate-100" style={{ fontFamily: "'Sora', sans-serif" }}>
+              修改记录
+            </div>
+            <div className="text-[11px] text-slate-500 font-mono mt-0.5">{record.pair} · {record.timeframe}</div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Chart image */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-2">行情图表</label>
+            {chartImage ? (
+              <div className="relative group rounded-xl overflow-hidden border border-white/10">
+                <img src={chartImage} alt="行情图表" className="w-full h-36 object-cover" />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => setLightbox(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
+                  >
+                    <ZoomIn size={13} />查看
+                  </button>
+                  <button
+                    onClick={() => setChartImage(undefined)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-medium transition-colors"
+                  >
+                    <X size={13} />删除
+                  </button>
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 text-xs font-medium transition-colors"
+                  >
+                    <ImagePlus size={13} />替换
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-6 rounded-xl border border-dashed border-white/10 text-slate-600 hover:border-teal-500/30 hover:text-teal-500/60 text-sm transition-all"
+              >
+                <ImagePlus size={16} />
+                <span>点击上传图表截图</span>
+              </button>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+          </div>
+
+          {/* Trade record */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-slate-500">交易记录</label>
+              <div className="flex gap-1.5">
+                {(["open", "closed"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setTrade((p) => ({ ...p, status: s }))}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
+                      trade.status === s
+                        ? s === "closed"
+                          ? "bg-teal-500/20 text-teal-400 border-teal-500/30"
+                          : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                        : "text-slate-600 border-white/8 hover:text-slate-400"
+                    }`}
+                  >
+                    {s === "closed" ? "已完结" : "进行中"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { key: "entryPrice" as const, label: "入场价位", placeholder: "0.00000", color: "" },
+                { key: "takeProfit"  as const, label: "止盈 (TP)", placeholder: "0.00000", color: "" },
+                { key: "stopLoss"   as const, label: "止损 (SL)", placeholder: "0.00000", color: "text-red-400" },
+                { key: "actualPnl"  as const, label: "实际盈亏",  placeholder: "+0.00",   color: "text-emerald-400" },
+              ]).map(({ key, label, placeholder, color }) => (
+                <div key={key}>
+                  <label className="block text-[10px] text-slate-500 mb-1.5">{label}</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={trade[key] !== undefined ? String(trade[key]) : ""}
+                    onChange={(e) => setTradeField(key, e.target.value)}
+                    placeholder={placeholder}
+                    className={`w-full px-3 py-2 rounded-lg border border-white/8 bg-slate-800/60 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-teal-500/30 placeholder:text-slate-700 transition-colors ${color || "text-slate-200"}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-2">交易备注</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="分析思路、入场理由、风险提示等..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-white/8 bg-slate-800/40 text-sm text-slate-200 placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-500/30 resize-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 h-10 rounded-xl border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-slate-800 text-sm transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 h-10 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+            >
+              {saving ? "保存中..." : "保存修改"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {lightbox && chartImage && (
+        <div className="fixed inset-0 z-60 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
+          <button className="absolute top-4 right-4 text-white/60 hover:text-white" onClick={() => setLightbox(false)}>
+            <X size={24} />
+          </button>
+          <img src={chartImage} alt="行情图表" className="max-w-full max-h-full rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
@@ -499,66 +631,45 @@ function RecordDetailModal({
   const isBear = record.verdict.signal.includes("bearish");
 
   return (
-    <div
-      className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
           <div>
             <div className="flex items-center gap-3">
-              <span
-                className="text-lg font-bold text-slate-100"
-                style={{ fontFamily: "'Fira Code', monospace" }}
-              >
+              <span className="text-lg font-bold text-slate-100" style={{ fontFamily: "'Fira Code', monospace" }}>
                 {record.pair}
               </span>
               <span className="text-sm text-slate-500 font-mono">{record.timeframe}</span>
-              <span className={`text-sm font-bold ${colorClass}`}>
-                {SIGNAL_LABELS[record.verdict.signal]}
-              </span>
+              <span className={`text-sm font-bold ${colorClass}`}>{SIGNAL_LABELS[record.verdict.signal]}</span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-slate-600 mt-1">
               <Calendar size={10} />
               {date.toLocaleString("zh-CN")}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
-          >
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors">
             <X size={18} />
           </button>
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Verdict summary */}
-          <div
-            className={`rounded-xl border p-4 ${
-              isBull ? "border-emerald-500/25 bg-emerald-500/5"
-              : isBear ? "border-red-500/25 bg-red-500/5"
-              : "border-amber-500/20 bg-amber-500/5"
-            }`}
-          >
+          <div className={`rounded-xl border p-4 ${
+            isBull ? "border-emerald-500/25 bg-emerald-500/5"
+            : isBear ? "border-red-500/25 bg-red-500/5"
+            : "border-amber-500/20 bg-amber-500/5"
+          }`}>
             <div className="flex items-center justify-between">
               <div>
-                <div
-                  className={`text-xl font-bold ${colorClass}`}
-                  style={{ fontFamily: "'Sora', sans-serif" }}
-                >
+                <div className={`text-xl font-bold ${colorClass}`} style={{ fontFamily: "'Sora', sans-serif" }}>
                   {SIGNAL_LABELS[record.verdict.signal]}
                 </div>
                 <div className="text-xs text-slate-500 mt-1">{record.verdict.description}</div>
               </div>
               <div className="text-right">
-                <div
-                  className="text-2xl font-bold text-amber-400"
-                  style={{ fontFamily: "'Fira Code', monospace" }}
-                >
+                <div className="text-2xl font-bold text-amber-400" style={{ fontFamily: "'Fira Code', monospace" }}>
                   {record.verdict.confidence}%
                 </div>
                 <div className="text-[10px] text-slate-600">可信度</div>
@@ -580,7 +691,6 @@ function RecordDetailModal({
             </div>
           </div>
 
-          {/* Chart image */}
           {record.chartImage && (
             <div>
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">整体行情图表</h3>
@@ -596,20 +706,17 @@ function RecordDetailModal({
             </div>
           )}
 
-          {/* Indicator details */}
           <div>
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">6 大指标详情</h3>
             <div className="space-y-2">
               {Object.entries(record.indicators).map(([key, val]) => (
                 <div key={key} className="rounded-xl border border-white/8 bg-slate-800/30 p-3">
                   <div className="flex items-start gap-3">
-                    <div
-                      className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border ${
-                        val.state === "bullish" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                        : val.state === "bearish" ? "bg-red-500/15 border-red-500/30 text-red-400"
-                        : "bg-slate-700/40 border-slate-600/30 text-slate-400"
-                      }`}
-                    >
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border ${
+                      val.state === "bullish" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                      : val.state === "bearish" ? "bg-red-500/15 border-red-500/30 text-red-400"
+                      : "bg-slate-700/40 border-slate-600/30 text-slate-400"
+                    }`}>
                       {val.state === "bullish" ? <TrendingUp size={14} />
                        : val.state === "bearish" ? <TrendingDown size={14} />
                        : <Minus size={14} />}
@@ -617,13 +724,11 @@ function RecordDetailModal({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-300">{INDICATOR_NAMES[key] ?? key}</span>
-                        <span
-                          className={`text-[10px] font-bold ${
-                            val.state === "bullish" ? "text-emerald-400"
-                            : val.state === "bearish" ? "text-red-400"
-                            : "text-slate-500"
-                          }`}
-                        >
+                        <span className={`text-[10px] font-bold ${
+                          val.state === "bullish" ? "text-emerald-400"
+                          : val.state === "bearish" ? "text-red-400"
+                          : "text-slate-500"
+                        }`}>
                           {val.state === "bullish" ? "看涨" : val.state === "bearish" ? "看跌" : "中性"}
                         </span>
                       </div>
@@ -649,7 +754,6 @@ function RecordDetailModal({
             </div>
           </div>
 
-          {/* Notes */}
           {record.notes && (
             <div className="rounded-xl border border-white/8 bg-slate-800/30 p-4">
               <h3 className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-2">交易备注</h3>
