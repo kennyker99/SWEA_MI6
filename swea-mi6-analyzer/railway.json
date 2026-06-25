@@ -4,7 +4,7 @@
     "builder": "RAILPACK"
   },
   "deploy": {
-    "startCommand": "node dist/migrate.js && NODE_ENV=production node dist/index.js",
+    "startCommand": "node dist/migrate.js; NODE_ENV=production node dist/index.js",
     "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
