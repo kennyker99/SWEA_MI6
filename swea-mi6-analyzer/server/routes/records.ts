@@ -19,21 +19,28 @@ router.get("/", async (_req, res) => {
   }
 });
 
-// POST /api/records
+// POST /api/records — upsert via insert then update on duplicate key
 router.post("/", async (req, res) => {
   if (!db) return noDb(req, res);
+  const { id, pair, timeframe, date, indicators, verdict, chartImage, notes } = req.body;
   try {
-    const { id, pair, timeframe, date, indicators, verdict, chartImage, notes } = req.body;
-    const [record] = await db
+    await db
       .insert(schema.analysisRecords)
-      .values({ id, pair, timeframe, date, indicators, verdict, chartImage, notes })
-      .onConflictDoUpdate({
-        target: schema.analysisRecords.id,
-        set: { pair, timeframe, date, indicators, verdict, chartImage, notes },
-      })
-      .returning();
-    res.json(record);
-  } catch (err) {
+      .values({ id, pair, timeframe, date, indicators, verdict, chartImage, notes });
+    res.json({ id });
+  } catch (err: any) {
+    if (err?.code === "ER_DUP_ENTRY") {
+      try {
+        await db!
+          .update(schema.analysisRecords)
+          .set({ pair, timeframe, date, indicators, verdict, chartImage, notes })
+          .where(eq(schema.analysisRecords.id, id));
+        return res.json({ id });
+      } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: "Failed to update record" });
+      }
+    }
     console.error(err);
     res.status(500).json({ error: "Failed to save record" });
   }
