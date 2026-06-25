@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基金经理量化武器库 — 10大交易指标</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg2: #111;
+            --bg3: #1a1a1a;
+            --border: #222;
+            --text: #e8e8e8;
+            --muted: #666;
+            --green: #00d084;
+            --yellow: #ffd700;
+            --red: #ff4444;
+            --purple: #a78bfa;
+            --orange: #ff9500;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            overflow-y: auto;
+            z-index: 100;
+            padding: 16px 0;
+        }
+
+        .sidebar-logo {
+            padding: 0 16px 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        .sidebar-logo-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--orange);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-logo-sub {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .health-score {
+            margin: 0 12px 12px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .health-score-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+
+        .health-score-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--green);
+            line-height: 1;
+        }
+
+        .health-score-denom {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .health-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--green);
+            transition: width 0.5s ease;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-left: 2px solid transparent;
+        }
+
+        .nav-item:hover { background: var(--bg3); }
+        .nav-item.active { background: var(--bg3); border-left-color: var(--purple); }
+
+        .nav-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            width: 16px;
+        }
+
+        .nav-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: #aaa;
+            flex: 1;
+        }
+
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        .nav-dot.green { background: var(--green); }
+        .nav-dot.yellow { background: var(--yellow); }
+        .nav-dot.red { background: var(--red); }
+
+        .main {
+            margin-left: 220px;
+            flex: 1;
+            padding: 24px;
+            max-width: calc(100% - 220px);
+        }
+
+        .page-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--orange);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 28px;
+        }
+
+        .indicator-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            scroll-margin-top: 24px;
+            transition: border-color 0.3s;
+        }
+
+        .indicator-card.good { border-color: #0a3a1a; }
+        .indicator-card.warn { border-color: #3a3010; }
+        .indicator-card.bad  { border-color: #3a0a0a; }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .card-header-text { flex: 1; }
+
+        .card-num {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .card-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .card-formula {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--purple);
+            margin-top: 2px;
+        }
+
+        .card-result-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: var(--bg3);
+            color: var(--muted);
+            min-width: 80px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .card-result-badge.green { background: #0a2d1a; color: var(--green); }
+        .card-result-badge.yellow { background: #2a2200; color: var(--yellow); }
+        .card-result-badge.red { background: #2d0a0a; color: var(--red); }
+
+        .card-chevron { color: var(--muted); font-size: 12px; transition: transform 0.2s; }
+        .indicator-card.collapsed .card-chevron { transform: rotate(-90deg); }
+
+        .card-body {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .indicator-card.collapsed .card-body { display: none; }
+
+        .input-section {}
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid #2a2a2a;
+            border-radius: 5px;
+            color: var(--text);
+            padding: 9px 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            transition: border-color 0.15s;
+        }
+
+        .input-field:focus { outline: none; border-color: var(--purple); }
+
+        .input-select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid #2a2a2a;
+            border-radius: 5px;
+            color: var(--text);
+            padding: 9px 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .input-select:focus { outline: none; border-color: var(--purple); }
+        .input-select option { background: var(--bg2); }
+
+        .result-section {}
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .result-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .result-box-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+
+        .result-box-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--purple);
+            transition: color 0.3s;
+        }
+
+        .result-box-value.green { color: var(--green); }
+        .result-box-value.yellow { color: var(--yellow); }
+        .result-box-value.red { color: var(--red); }
+
+        .result-note {
+            margin-top: 10px;
+            background: var(--bg3);
+            border-left: 3px solid var(--purple);
+            border-radius: 0 6px 6px 0;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .result-note.green { border-color: var(--green); background: #030d07; color: #4ade80; }
+        .result-note.yellow { border-color: var(--yellow); background: #0d0b03; color: var(--yellow); }
+        .result-note.red { border-color: var(--red); background: #0d0303; color: #f87171; }
+
+        .chart-wrap {
+            grid-column: 1 / -1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .chart-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+
+        canvas { width: 100%; display: block; }
+
+        .chapter-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 32px 0 16px;
+        }
+
+        .chapter-accent {
+            width: 3px;
+            height: 20px;
+            border-radius: 2px;
+            background: var(--orange);
+        }
+
+        .chapter-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--orange);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .quadrant-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .quad {
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .quad.ideal { background: #0a2d1a; color: var(--green); }
+        .quad.good  { background: #0a2d1a; color: #4ade80; }
+        .quad.warn  { background: #2a2200; color: var(--yellow); }
+        .quad.bad   { background: #2d0a0a; color: #f87171; }
+
+        .quad-title { font-weight: 700; font-size: 11px; margin-bottom: 3px; }
+
+        .pillar-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .pillar {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .pillar-icon { font-size: 20px; }
+        .pillar-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .pillar-score {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; max-width: 100%; }
+            .card-body { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-title">量化武器库</div>
+        <div class="sidebar-logo-sub">10 Quant Tools</div>
+    </div>
+
+    <div class="health-score">
+        <div class="health-score-label">综合健康度</div>
+        <div>
+            <span class="health-score-value" id="healthVal">—</span>
+            <span class="health-score-denom">/100</span>
+        </div>
+        <div class="health-bar">
+            <div class="health-bar-fill" id="healthBar" style="width:0%"></div>
+        </div>
+    </div>
+
+    <div id="navList"></div>
+</div>
+
+<div class="main">
+    <div class="page-title">基金经理量化武器库</div>
+    <div class="page-sub">10大核心交易指标 · 实时计算 · 专业评级</div>
+
+    <div class="chapter-header">
+        <div class="chapter-accent"></div>
+        <div class="chapter-title">第一章 · 生存与底线管理</div>
+    </div>
+
+    <div class="indicator-card" id="card-1">
+        <div class="card-header" onclick="toggleCard(1)">
+            <div class="card-icon" style="background:#1a0a2a">🎯</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 01</div>
+                <div class="card-title">胜率公式 Winning Rate</div>
+                <div class="card-formula">胜率 = 盈利次数 / 总交易次数</div>
+            </div>
+            <div class="card-result-badge" id="badge-1">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">盈利交易次数</label>
+                    <input class="input-field" type="number" id="i1_win" value="40" oninput="calc1()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">总交易次数</label>
+                    <input class="input-field" type="number" id="i1_total" value="100" oninput="calc1()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">胜率</div>
+                        <div class="result-box-value" id="r1_rate">40%</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">败率</div>
+                        <div class="result-box-value" id="r1_loss">60%</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-1">💡 胜率不是孤立指标，需结合盈亏比综合评估。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-2">
+        <div class="card-header" onclick="toggleCard(2)">
+            <div class="card-icon" style="background:#1a0a0a">📉</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 02</div>
+                <div class="card-title">最大回撤 Max Drawdown</div>
+                <div class="card-formula">MDD = (峰值 − 谷底) / 峰值</div>
+            </div>
+            <div class="card-result-badge" id="badge-2">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">账户峰值（元）</label>
+                    <input class="input-field" type="number" id="i2_peak" value="1500000" oninput="calc2()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">账户谷底值（元）</label>
+                    <input class="input-field" type="number" id="i2_trough" value="1200000" oninput="calc2()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">最大回撤 MDD</div>
+                        <div class="result-box-value" id="r2_mdd">20%</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">回本所需涨幅</div>
+                        <div class="result-box-value" id="r2_recover">25%</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-2">💡 最大回撤是账户的生命线，超过30%需立即停止交易。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-3">
+        <div class="card-header" onclick="toggleCard(3)">
+            <div class="card-icon" style="background:#0a1e0a">🛡️</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 03</div>
+                <div class="card-title">仓位管理 Position Sizing</div>
+                <div class="card-formula">仓位 = (资金 × 风险%) / 止损幅度</div>
+            </div>
+            <div class="card-result-badge" id="badge-3">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">账户资金（元）</label>
+                    <input class="input-field" type="number" id="i3_capital" value="1000000" oninput="calc3()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">风险比例 %（建议2%）</label>
+                    <input class="input-field" type="number" id="i3_risk" value="2" min="0.1" max="10" step="0.1" oninput="calc3()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">止损幅度（元/股 或 点数）</label>
+                    <input class="input-field" type="number" id="i3_sl" value="5" oninput="calc3()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">最大仓位</div>
+                        <div class="result-box-value" id="r3_pos">4,000 股</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">风险金额</div>
+                        <div class="result-box-value" id="r3_risk">¥20,000</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">50连亏后余额</div>
+                        <div class="result-box-value" id="r3_survive">36%</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">风险评级</div>
+                        <div class="result-box-value" id="r3_grade">稳健</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-3">💡 永远先确定止损位，再决定仓位，最后决定入场点。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chapter-header">
+        <div class="chapter-accent" style="background:#a78bfa"></div>
+        <div class="chapter-title" style="color:#a78bfa">第二章 · 期望与收益核心逻辑</div>
+    </div>
+
+    <div class="indicator-card" id="card-4">
+        <div class="card-header" onclick="toggleCard(4)">
+            <div class="card-icon" style="background:#150a2a">📊</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 04</div>
+                <div class="card-title">交易期望值 Expectancy</div>
+                <div class="card-formula">E = (胜率 × 平均盈利) − (败率 × 平均亏损)</div>
+            </div>
+            <div class="card-result-badge" id="badge-4">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">胜率 %</label>
+                    <input class="input-field" type="number" id="i4_wr" value="40" oninput="calc4()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">平均盈利（元）</label>
+                    <input class="input-field" type="number" id="i4_profit" value="3000" oninput="calc4()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">平均亏损（元）</label>
+                    <input class="input-field" type="number" id="i4_loss" value="1000" oninput="calc4()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">每笔期望值</div>
+                        <div class="result-box-value" id="r4_exp">+¥600</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">100笔累计</div>
+                        <div class="result-box-value" id="r4_100">+¥60,000</div>
+                    </div>
+                </div>
+                <div class="quadrant-grid">
+                    <div class="quad ideal"><div class="quad-title">✅ 高胜率 + 高盈亏比</div>理想系统，难以实现</div>
+                    <div class="quad good"><div class="quad-title">✅ 低胜率 + 高盈亏比</div>趋势交易核心逻辑</div>
+                    <div class="quad warn"><div class="quad-title">⚠️ 高胜率 + 低盈亏比</div>黑天鹅风险极高</div>
+                    <div class="quad bad"><div class="quad-title">❌ 低胜率 + 低盈亏比</div>负期望，必然亏损</div>
+                </div>
+                <div class="result-note" id="note-4">💡 正期望值系统，长期必然盈利。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-5">
+        <div class="card-header" onclick="toggleCard(5)">
+            <div class="card-icon" style="background:#1a1000">⚖️</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 05</div>
+                <div class="card-title">盈亏比 Risk & Reward Ratio</div>
+                <div class="card-formula">R:R = 平均盈利 / 平均亏损</div>
+            </div>
+            <div class="card-result-badge" id="badge-5">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">平均盈利（元）</label>
+                    <input class="input-field" type="number" id="i5_profit" value="3000" oninput="calc5()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">平均亏损（元）</label>
+                    <input class="input-field" type="number" id="i5_loss" value="1000" oninput="calc5()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">盈亏比</div>
+                        <div class="result-box-value" id="r5_rr">3.00:1</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">盈利所需最低胜率</div>
+                        <div class="result-box-value" id="r5_minwr">25%</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-5">💡 盈亏比 ≥ 2:1 是红线，胜率仅需超过34%即可正期望。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-6">
+        <div class="card-header" onclick="toggleCard(6)">
+            <div class="card-icon" style="background:#0a1a0a">🏗️</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 06</div>
+                <div class="card-title">风险收益框架评估</div>
+                <div class="card-formula">亏少 + 赚多 + 长期稳定执行</div>
+            </div>
+            <div class="card-result-badge" id="badge-6">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">单笔风险 %（≤2% 为合格）</label>
+                    <input class="input-field" type="number" id="i6_risk" value="2" step="0.1" oninput="calc6()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">是否使用移动止损</label>
+                    <select class="input-select" id="i6_trailing" onchange="calc6()">
+                        <option value="yes">是（让利润奔跑）</option>
+                        <option value="no">否</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">是否严格执行系统纪律</label>
+                    <select class="input-select" id="i6_discipline" onchange="calc6()">
+                        <option value="yes">是（从不主观修改）</option>
+                        <option value="no">否（偶尔感情用事）</option>
+                    </select>
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="pillar-row">
+                    <div class="pillar">
+                        <div class="pillar-icon">🛡️</div>
+                        <div class="pillar-label">亏少</div>
+                        <div class="pillar-score" id="r6_p1">—</div>
+                    </div>
+                    <div class="pillar">
+                        <div class="pillar-icon">🚀</div>
+                        <div class="pillar-label">赚多</div>
+                        <div class="pillar-score" id="r6_p2">—</div>
+                    </div>
+                    <div class="pillar">
+                        <div class="pillar-icon">⚙️</div>
+                        <div class="pillar-label">稳定执行</div>
+                        <div class="pillar-score" id="r6_p3">—</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-6" style="margin-top:12px">💡 三支柱缺一不可，系统纪律是长期盈利的根基。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chapter-header">
+        <div class="chapter-accent" style="background:#00d084"></div>
+        <div class="chapter-title" style="color:#00d084">第三章 · 数学与效率的极致优化</div>
+    </div>
+
+    <div class="indicator-card" id="card-7">
+        <div class="card-header" onclick="toggleCard(7)">
+            <div class="card-icon" style="background:#0a1e1e">📐</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 07</div>
+                <div class="card-title">夏普比率 Sharpe Ratio</div>
+                <div class="card-formula">Sharpe = (年化收益 − 无风险利率) / 年化波动率</div>
+            </div>
+            <div class="card-result-badge" id="badge-7">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">年化收益率 %</label>
+                    <input class="input-field" type="number" id="i7_ret" value="15" oninput="calc7()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">无风险利率 %（默认国债3%）</label>
+                    <input class="input-field" type="number" id="i7_rf" value="3" oninput="calc7()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">年化波动率 %</label>
+                    <input class="input-field" type="number" id="i7_vol" value="8" oninput="calc7()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">夏普比率</div>
+                        <div class="result-box-value" id="r7_sharpe">1.50</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">评级</div>
+                        <div class="result-box-value" id="r7_grade">合格</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-7">💡 夏普 > 2 为优秀，> 3 为传奇基金水准。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-8">
+        <div class="card-header" onclick="toggleCard(8)">
+            <div class="card-icon" style="background:#1a0a1a">⚡</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 08</div>
+                <div class="card-title">仓位杠杆 Position Leverage</div>
+                <div class="card-formula">杠杆 = 总头寸价值 / 账户净值</div>
+            </div>
+            <div class="card-result-badge" id="badge-8">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">账户净值（元）</label>
+                    <input class="input-field" type="number" id="i8_equity" value="100000" oninput="calc8()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">总头寸价值（元）</label>
+                    <input class="input-field" type="number" id="i8_position" value="300000" oninput="calc8()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">交易品种</label>
+                    <select class="input-select" id="i8_type" onchange="calc8()">
+                        <option value="bond">债券/蓝筹（建议 ≤ 5倍）</option>
+                        <option value="stock" selected>主流股票（建议 ≤ 2倍）</option>
+                        <option value="crypto">加密货币/期货（建议 ≤ 1倍）</option>
+                    </select>
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">杠杆倍数</div>
+                        <div class="result-box-value" id="r8_lev">3.0×</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">爆仓触发跌幅</div>
+                        <div class="result-box-value" id="r8_wipe">33.3%</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-8">💡 市场越动荡，杠杆越低——这是专业风险管理的核心原则。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-9">
+        <div class="card-header" onclick="toggleCard(9)">
+            <div class="card-icon" style="background:#1a1500">🧮</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 09</div>
+                <div class="card-title">凯利公式 Kelly Formula</div>
+                <div class="card-formula">f* = (p × b − q) / b</div>
+            </div>
+            <div class="card-result-badge" id="badge-9">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">胜率 p %</label>
+                    <input class="input-field" type="number" id="i9_wr" value="40" oninput="calc9()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">盈亏比 b（如3:1 填 3）</label>
+                    <input class="input-field" type="number" id="i9_rr" value="3" oninput="calc9()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">全凯利仓位</div>
+                        <div class="result-box-value" id="r9_full">20%</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">半凯利（推荐）</div>
+                        <div class="result-box-value green" id="r9_half">10%</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">四分之一凯利</div>
+                        <div class="result-box-value" id="r9_quarter">5%</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">建议档位</div>
+                        <div class="result-box-value" id="r9_suggest">半凯利</div>
+                    </div>
+                </div>
+                <div class="result-note" id="note-9">💡 职业交易者普遍采用半凯利策略，牺牲部分增速换取稳健。</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="indicator-card" id="card-10">
+        <div class="card-header" onclick="toggleCard(10)">
+            <div class="card-icon" style="background:#001a0a">📈</div>
+            <div class="card-header-text">
+                <div class="card-num">指标 10</div>
+                <div class="card-title">复利公式 Compound Interest</div>
+                <div class="card-formula">A = P(1 + r/n)^(nt)</div>
+            </div>
+            <div class="card-result-badge" id="badge-10">—</div>
+            <div class="card-chevron">▼</div>
+        </div>
+        <div class="card-body">
+            <div class="input-section">
+                <div class="input-group">
+                    <label class="input-label">本金 P（元）</label>
+                    <input class="input-field" type="number" id="i10_p" value="1000000" oninput="calc10()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">年化收益率 r %</label>
+                    <input class="input-field" type="number" id="i10_r" value="15" oninput="calc10()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">每年复利次数 n</label>
+                    <input class="input-field" type="number" id="i10_n" value="1" min="1" oninput="calc10()">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">投资年限 t（年）</label>
+                    <input class="input-field" type="number" id="i10_t" value="10" oninput="calc10()">
+                </div>
+            </div>
+            <div class="result-section">
+                <div class="result-grid">
+                    <div class="result-box">
+                        <div class="result-box-label">最终金额</div>
+                        <div class="result-box-value green" id="r10_final">¥4,045,558</div>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-box-label">总收益率</div>
+                        <div class="result-box-value green" id="r10_total">+305%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-wrap" style="grid-column:1/-1">
+                <div class="chart-title">复利增长曲线对比（10% / 你的收益率 / 20%）</div>
+                <canvas id="compoundChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div style="height:40px"></div>
+</div>
+
+<script>
+const navData = [
+    {id:1, label:'胜率公式'},
+    {id:2, label:'最大回撤'},
+    {id:3, label:'仓位管理'},
+    {id:4, label:'交易期望值'},
+    {id:5, label:'盈亏比'},
+    {id:6, label:'风险收益框架'},
+    {id:7, label:'夏普比率'},
+    {id:8, label:'仓位杠杆'},
+    {id:9, label:'凯利公式'},
+    {id:10, label:'复利公式'},
+];
+
+const navList = document.getElementById('navList');
+navData.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'nav-item';
+    el.id = 'nav-' + n.id;
+    el.innerHTML = `<span class="nav-num">${String(n.id).padStart(2,'0')}</span><span class="nav-label">${n.label}</span><span class="nav-dot" id="ndot-${n.id}"></span>`;
+    el.onclick = () => { document.getElementById('card-'+n.id).scrollIntoView({behavior:'smooth',block:'start'}); };
+    navList.appendChild(el);
+});
+
+function toggleCard(id) {
+    document.getElementById('card-'+id).classList.toggle('collapsed');
+}
+
+const scores = {};
+
+function setScore(id, val, cls) {
+    scores[id] = val;
+    const dot = document.getElementById('ndot-'+id);
+    dot.className = 'nav-dot ' + cls;
+    updateHealth();
+}
+
+function updateHealth() {
+    const vals = Object.values(scores);
+    if (!vals.length) return;
+    const avg = Math.round(vals.reduce((a,b)=>a+b,0) / 10);
+    document.getElementById('healthVal').textContent = avg;
+    const bar = document.getElementById('healthBar');
+    bar.style.width = avg + '%';
+    bar.style.background = avg >= 70 ? 'var(--green)' : avg >= 40 ? 'var(--yellow)' : 'var(--red)';
+}
+
+function setBadge(id, text, cls) {
+    const b = document.getElementById('badge-'+id);
+    b.textContent = text;
+    b.className = 'card-result-badge ' + cls;
+    const card = document.getElementById('card-'+id);
+    card.className = 'indicator-card ' + (cls === 'green' ? 'good' : cls === 'yellow' ? 'warn' : cls === 'red' ? 'bad' : '');
+}
+
+function setNote(id, text, cls) {
+    const n = document.getElementById('note-'+id);
+    if (n) { n.textContent = text; n.className = 'result-note ' + (cls||''); }
+}
+
+function colorEl(id, cls) {
+    const el = document.getElementById(id);
+    if (el) el.className = 'result-box-value ' + (cls||'');
+}
+
+function calc1() {
+    const win = +document.getElementById('i1_win').value || 0;
+    const total = +document.getElementById('i1_total').value || 1;
+    const wr = win / total * 100;
+    const lr = 100 - wr;
+    document.getElementById('r1_rate').textContent = wr.toFixed(1) + '%';
+    document.getElementById('r1_loss').textContent = lr.toFixed(1) + '%';
+
+    let cls, note, sc;
+    if (wr >= 50) { cls='green'; note='✅ 胜率优秀（≥50%），系统频繁正确，心理压力较小。'; sc=90; }
+    else if (wr >= 30) { cls='yellow'; note='⚠️ 胜率一般（30-50%），需配合高盈亏比（≥2:1）才能盈利。'; sc=60; }
+    else { cls='red'; note='❌ 胜率偏低（<30%），需极高盈亏比（≥4:1），执行难度极大。'; sc=20; }
+
+    colorEl('r1_rate', cls); colorEl('r1_loss', '');
+    setBadge(1, wr.toFixed(1)+'%', cls);
+    setNote(1, note, cls);
+    setScore(1, sc, cls);
+}
+
+function calc2() {
+    const peak = +document.getElementById('i2_peak').value || 1;
+    const trough = +document.getElementById('i2_trough').value || 0;
+    const mdd = (peak - trough) / peak * 100;
+    const recover = trough > 0 ? (peak - trough) / trough * 100 : 0;
+    document.getElementById('r2_mdd').textContent = mdd.toFixed(1) + '%';
+    document.getElementById('r2_recover').textContent = recover.toFixed(1) + '%';
+
+    let cls, note, sc;
+    if (mdd < 10) { cls='green'; note='✅ 优秀水平（MDD < 10%），稳健型基金标准。'; sc=100; }
+    else if (mdd < 20) { cls='yellow'; note='⚠️ 合格水平（10-20%），平衡型策略，可接受但需关注。'; sc=65; }
+    else if (mdd < 30) { cls='red'; note='🔴 警戒水平（20-30%），需立即审查交易系统，降低风险敞口。'; sc=30; }
+    else { cls='red'; note='❌ 危险水平（>30%），账户面临崩溃风险！立即停止交易并评估系统。'; sc=0; }
+
+    colorEl('r2_mdd', cls); colorEl('r2_recover', mdd > 20 ? 'red' : '');
+    setBadge(2, mdd.toFixed(1)+'%', cls);
+    setNote(2, note, cls);
+    setScore(2, sc, cls);
+}
+
+function calc3() {
+    const cap = +document.getElementById('i3_capital').value || 0;
+    const risk = +document.getElementById('i3_risk').value || 0;
+    const sl = +document.getElementById('i3_sl').value || 1;
+    const riskAmt = cap * risk / 100;
+    const pos = riskAmt / sl;
+    const survive50 = Math.pow(1 - risk/100, 50) * 100;
+
+    document.getElementById('r3_pos').textContent = Math.floor(pos).toLocaleString() + ' 股';
+    document.getElementById('r3_risk').textContent = '¥' + riskAmt.toLocaleString();
+    document.getElementById('r3_survive').textContent = survive50.toFixed(1) + '%';
+
+    let cls, note, sc, grade;
+    if (risk <= 1) { cls='green'; grade='极稳健'; note='✅ 极稳健（≤1%），即使50连亏账户仍保留' + survive50.toFixed(0) + '%。适合新系统测试期。'; sc=100; }
+    else if (risk <= 2) { cls='green'; grade='稳健'; note='✅ 稳健（≤2%），职业标准风险控制，50连亏后保留' + survive50.toFixed(0) + '%资金。'; sc=85; }
+    else if (risk <= 5) { cls='yellow'; grade='偏激进'; note='⚠️ 偏激进（2-5%），短期回撤较大，需确保系统正期望值。'; sc=50; }
+    else { cls='red'; grade='高危'; note='❌ 高危（>5%），单笔风险过高，连续亏损将快速侵蚀本金！'; sc=10; }
+
+    document.getElementById('r3_grade').textContent = grade;
+    colorEl('r3_pos', cls); colorEl('r3_survive', cls);
+    colorEl('r3_grade', cls);
+    setBadge(3, risk+'%风险', cls);
+    setNote(3, note, cls);
+    setScore(3, sc, cls);
+}
+
+function calc4() {
+    const wr = +document.getElementById('i4_wr').value / 100 || 0;
+    const profit = +document.getElementById('i4_profit').value || 0;
+    const loss = +document.getElementById('i4_loss').value || 0;
+    const exp = wr * profit - (1-wr) * loss;
+    const exp100 = exp * 100;
+
+    document.getElementById('r4_exp').textContent = (exp >= 0 ? '+' : '') + '¥' + exp.toLocaleString();
+    document.getElementById('r4_100').textContent = (exp100 >= 0 ? '+' : '') + '¥' + exp100.toLocaleString();
+
+    let cls, note, sc;
+    if (exp > 0) { cls='green'; note='✅ 正期望值系统！每笔平均盈利¥' + exp.toFixed(0) + '，长期执行必然盈利。'; sc=100; }
+    else if (exp === 0) { cls='yellow'; note='⚠️ 零期望值，扣除手续费后为负。需提高盈亏比或胜率。'; sc=40; }
+    else { cls='red'; note='❌ 负期望值系统！长期执行必然亏损，请重新检视策略参数。'; sc=0; }
+
+    colorEl('r4_exp', cls); colorEl('r4_100', cls);
+    setBadge(4, (exp>=0?'+':'')+exp.toFixed(0)+'元/笔', cls);
+    setNote(4, note, cls);
+    setScore(4, sc, cls);
+}
+
+function calc5() {
+    const profit = +document.getElementById('i5_profit').value || 0;
+    const loss = +document.getElementById('i5_loss').value || 1;
+    const rr = profit / loss;
+    const minWR = 1 / (1 + rr) * 100;
+
+    document.getElementById('r5_rr').textContent = rr.toFixed(2) + ':1';
+    document.getElementById('r5_minwr').textContent = minWR.toFixed(1) + '%';
+
+    let cls, note, sc;
+    if (rr >= 3) { cls='green'; note='✅ 优秀盈亏比（≥3:1）！只需胜率超过' + minWR.toFixed(0) + '%即可长期盈利。'; sc=100; }
+    else if (rr >= 2) { cls='green'; note='✅ 达标（≥2:1红线）。胜率超过' + minWR.toFixed(0) + '%即可盈利，可接受入场。'; sc=75; }
+    else if (rr >= 1) { cls='yellow'; note='⚠️ 未达2:1红线，需胜率超过' + minWR.toFixed(0) + '%才能盈利，执行风险较高。'; sc=40; }
+    else { cls='red'; note='❌ 盈亏比<1，赚的比亏的少，无论胜率多高都难以弥补。'; sc=0; }
+
+    colorEl('r5_rr', cls); colorEl('r5_minwr', rr<2?'red':'green');
+    setBadge(5, rr.toFixed(2)+':1', cls);
+    setNote(5, note, cls);
+    setScore(5, sc, cls);
+}
+
+function calc6() {
+    const risk = +document.getElementById('i6_risk').value || 0;
+    const trailing = document.getElementById('i6_trailing').value;
+    const discipline = document.getElementById('i6_discipline').value;
+
+    const p1score = risk <= 1 ? '✅ 满分' : risk <= 2 ? '✅ 合格' : risk <= 5 ? '⚠️ 偏高' : '❌ 危险';
+    const p2score = trailing === 'yes' ? '✅ 已用' : '❌ 未用';
+    const p3score = discipline === 'yes' ? '✅ 严格' : '❌ 松散';
+
+    document.getElementById('r6_p1').textContent = p1score;
+    document.getElementById('r6_p2').textContent = p2score;
+    document.getElementById('r6_p3').textContent = p3score;
+
+    const sc = (risk<=2?33:risk<=5?15:0) + (trailing==='yes'?33:0) + (discipline==='yes'?34:0);
+    let cls, note;
+    if (sc >= 80) { cls='green'; note='✅ 三支柱健全！风险收益框架执行到位，系统具备长期盈利能力。'; }
+    else if (sc >= 50) { cls='yellow'; note='⚠️ 框架部分执行，建议完善薄弱环节，特别是系统纪律。'; }
+    else { cls='red'; note='❌ 框架严重缺失！请先建立完整的风险管理体系再投入实盘。'; }
+
+    setBadge(6, sc+'分', cls);
+    setNote(6, note, cls);
+    setScore(6, sc, cls);
+}
+
+function calc7() {
+    const ret = +document.getElementById('i7_ret').value || 0;
+    const rf = +document.getElementById('i7_rf').value || 0;
+    const vol = +document.getElementById('i7_vol').value || 1;
+    const sharpe = (ret - rf) / vol;
+
+    document.getElementById('r7_sharpe').textContent = sharpe.toFixed(2);
+
+    let cls, grade, note, sc;
+    if (sharpe >= 3) { cls='green'; grade='卓越'; note='🏆 卓越（>3）！传奇基金水准，风险调整后收益极高。'; sc=100; }
+    else if (sharpe >= 2) { cls='green'; grade='优秀'; note='✅ 优秀（2-3），顶级基金标准，机构级别的风险调整收益。'; sc=85; }
+    else if (sharpe >= 1) { cls='yellow'; grade='合格'; note='⚠️ 合格（1-2），市场认可水平，但仍有优化空间。'; sc=60; }
+    else { cls='red'; grade='不合格'; note='❌ 不合格（<1），风险调整后收益较差，需降低波动率或提高收益。'; sc=20; }
+
+    document.getElementById('r7_grade').textContent = grade;
+    colorEl('r7_sharpe', cls); colorEl('r7_grade', cls);
+    setBadge(7, sharpe.toFixed(2), cls);
+    setNote(7, note, cls);
+    setScore(7, sc, cls);
+}
+
+function calc8() {
+    const equity = +document.getElementById('i8_equity').value || 1;
+    const pos = +document.getElementById('i8_position').value || 0;
+    const type = document.getElementById('i8_type').value;
+    const lev = pos / equity;
+    const wipe = (1/lev*100);
+
+    document.getElementById('r8_lev').textContent = lev.toFixed(1) + '×';
+    document.getElementById('r8_wipe').textContent = wipe.toFixed(1) + '%';
+
+    const maxLev = type==='bond' ? 5 : type==='stock' ? 2 : 1;
+    let cls, note, sc;
+    if (lev <= maxLev * 0.5) { cls='green'; note='✅ 杠杆保守，逆向移动' + wipe.toFixed(0) + '%才触发爆仓，风险可控。'; sc=100; }
+    else if (lev <= maxLev) { cls='yellow'; note='⚠️ 杠杆在建议上限内，但需动态监控波动率，及时降杠杆。'; sc=60; }
+    else { cls='red'; note='❌ 杠杆超出建议上限！市场仅需逆向移动' + wipe.toFixed(0) + '%即可清空账户！'; sc=10; }
+
+    colorEl('r8_lev', cls); colorEl('r8_wipe', cls==='red'?'red':cls==='yellow'?'yellow':'green');
+    setBadge(8, lev.toFixed(1)+'×', cls);
+    setNote(8, note, cls);
+    setScore(8, sc, cls);
+}
+
+function calc9() {
+    const p = +document.getElementById('i9_wr').value / 100 || 0;
+    const b = +document.getElementById('i9_rr').value || 1;
+    const q = 1 - p;
+    const kelly = (p * b - q) / b * 100;
+    const half = kelly / 2;
+    const quarter = kelly / 4;
+
+    document.getElementById('r9_full').textContent = kelly > 0 ? kelly.toFixed(1)+'%' : '负值';
+    document.getElementById('r9_half').textContent = kelly > 0 ? half.toFixed(1)+'%' : '—';
+    document.getElementById('r9_quarter').textContent = kelly > 0 ? quarter.toFixed(1)+'%' : '—';
+
+    let cls, note, sc, suggest;
+    if (kelly <= 0) { cls='red'; suggest='不入场'; note='❌ 凯利值为负，该参数组合为负期望系统，不建议交易。'; sc=0; }
+    else if (kelly < 10) { cls='yellow'; suggest='全凯利'; note='⚠️ 凯利值偏小，建议使用全凯利，但需确保系统参数准确。'; sc=70; }
+    else if (kelly < 25) { cls='green'; suggest='半凯利'; note='✅ 建议使用半凯利（'+half.toFixed(1)+'%），平衡增速与稳健。'; sc=100; }
+    else { cls='yellow'; suggest='1/4凯利'; note='⚠️ 凯利值较大，建议使用四分之一凯利（'+quarter.toFixed(1)+'%）控制波动。'; sc=80; }
+
+    document.getElementById('r9_suggest').textContent = suggest;
+    colorEl('r9_full', ''); colorEl('r9_suggest', cls);
+    setBadge(9, kelly>0 ? 'f*='+kelly.toFixed(1)+'%' : '负期望', cls);
+    setNote(9, note, cls);
+    setScore(9, sc, cls);
+}
+
+function calc10() {
+    const P = +document.getElementById('i10_p').value || 0;
+    const r = +document.getElementById('i10_r').value / 100 || 0;
+    const n = +document.getElementById('i10_n').value || 1;
+    const t = +document.getElementById('i10_t').value || 1;
+    const A = P * Math.pow(1 + r/n, n*t);
+    const totalReturn = (A - P) / P * 100;
+
+    document.getElementById('r10_final').textContent = '¥' + Math.round(A).toLocaleString();
+    document.getElementById('r10_total').textContent = '+' + totalReturn.toFixed(0) + '%';
+
+    const sc = Math.min(100, totalReturn / 10);
+    const cls = totalReturn > 200 ? 'green' : totalReturn > 50 ? 'yellow' : 'red';
+    colorEl('r10_final', 'green'); colorEl('r10_total', 'green');
+    setBadge(10, '×'+((A/P).toFixed(1)), 'green');
+    setScore(10, Math.min(100, sc), cls);
+
+    drawChart(P, r, n, t);
+}
+
+function drawChart(P, r, n, t) {
+    const canvas = document.getElementById('compoundChart');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.offsetWidth || 600;
+    const H = 200;
+    canvas.width = W;
+    canvas.height = H;
+    ctx.clearRect(0, 0, W, H);
+
+    const years = Math.max(t, 20);
+    const rates = [0.10, r, 0.20];
+    const colors = ['#555', '#a78bfa', '#00d084'];
+    const labels = ['10%', (r*100).toFixed(0)+'%（你的）', '20%'];
+    const maxVal = P * Math.pow(1.20, years);
+
+    const pad = { top: 16, right: 16, bottom: 30, left: 60 };
+    const cW = W - pad.left - pad.right;
+    const cH = H - pad.top - pad.bottom;
+
+    ctx.strokeStyle = '#1e1e1e';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + cH - (i/4) * cH;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+        ctx.fillStyle = '#444';
+        ctx.font = '10px IBM Plex Mono, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText('¥' + ((maxVal*i/4/10000).toFixed(0))+'万', pad.left - 4, y + 3);
+    }
+
+    rates.forEach((rate, ri) => {
+        ctx.beginPath();
+        ctx.strokeStyle = colors[ri];
+        ctx.lineWidth = ri === 1 ? 2.5 : 1.5;
+        for (let y = 0; y <= years; y++) {
+            const val = P * Math.pow(1 + rate/n, n*y);
+            const x = pad.left + (y/years) * cW;
+            const yp = pad.top + cH - (val/maxVal) * cH;
+            y === 0 ? ctx.moveTo(x, yp) : ctx.lineTo(x, yp);
+        }
+        ctx.stroke();
+    });
+
+    ctx.fillStyle = '#444';
+    ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.textAlign = 'center';
+    [0, Math.floor(years/4), Math.floor(years/2), Math.floor(years*3/4), years].forEach(y => {
+        const x = pad.left + (y/years) * cW;
+        ctx.fillText(y+'年', x, H - 4);
+    });
+
+    rates.forEach((rate, ri) => {
+        const lx = pad.left + ri * (cW/3) + 10;
+        ctx.fillStyle = colors[ri];
+        ctx.fillRect(lx, 6, 20, 3);
+        ctx.fillStyle = colors[ri];
+        ctx.font = '10px IBM Plex Mono, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(labels[ri], lx + 24, 12);
+    });
+}
+
+function initAll() {
+    [calc1, calc2, calc3, calc4, calc5, calc6, calc7, calc8, calc9, calc10].forEach(f => f());
+}
+
+function saveState() {
+    const inputs = document.querySelectorAll('.input-field, .input-select');
+    const data = {};
+    inputs.forEach(el => { if (el.id) data[el.id] = el.value; });
+    localStorage.setItem('quant_state', JSON.stringify(data));
+}
+
+function loadState() {
+    try {
+        const data = JSON.parse(localStorage.getItem('quant_state') || '{}');
+        Object.entries(data).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        });
+    } catch(e) {}
+}
+
+document.querySelectorAll('.input-field, .input-select').forEach(el => {
+    el.addEventListener('input', saveState);
+    el.addEventListener('change', saveState);
+});
+
+loadState();
+initAll();
+
+window.addEventListener('scroll', () => {
+    navData.forEach(n => {
+        const el = document.getElementById('card-'+n.id);
+        const nav = document.getElementById('nav-'+n.id);
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= 100 && rect.bottom > 100) {
+            document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+            nav.classList.add('active');
+        }
+    });
+});
+</script>
+</body>
+</html>
