@@ -8,10 +8,11 @@ import {
   Calendar, Clock, X, ZoomIn, FileText, BarChart2,
 } from "lucide-react";
 import {
-  loadRecords, deleteRecord, getVerdictColor,
+  getVerdictColor,
   TIMEFRAMES,
   type AnalysisRecord,
 } from "@/lib/swea-data";
+import { apiLoadRecords, apiDeleteRecord } from "@/lib/api";
 import { toast } from "sonner";
 import StatsDashboard from "@/components/StatsDashboard";
 
@@ -43,16 +44,21 @@ export default function HistoryPage() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    setRecords(loadRecords());
+    apiLoadRecords().then(setRecords).catch(() => toast.error("加载记录失败"));
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("确认删除这条记录？")) return;
-    deleteRecord(id);
-    setRecords(loadRecords());
-    if (selectedRecord?.id === id) setSelectedRecord(null);
-    toast.success("记录已删除");
+    try {
+      await apiDeleteRecord(id);
+      const updated = await apiLoadRecords();
+      setRecords(updated);
+      if (selectedRecord?.id === id) setSelectedRecord(null);
+      toast.success("记录已删除");
+    } catch {
+      toast.error("删除失败");
+    }
   };
 
   const allPairs = Array.from(new Set(records.map((r) => r.pair))).sort();

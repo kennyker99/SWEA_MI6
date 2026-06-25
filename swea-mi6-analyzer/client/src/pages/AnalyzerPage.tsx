@@ -15,11 +15,11 @@ import {
   TIMEFRAMES,
   createDefaultIndicators,
   calculateVerdict,
-  saveRecord,
   getVerdictColor,
   type AnalysisRecord,
   type IndicatorValue,
 } from "@/lib/swea-data";
+import { apiSaveRecord } from "@/lib/api";
 import IndicatorCard from "@/components/IndicatorCard";
 import VerdictCard from "@/components/VerdictCard";
 
@@ -64,7 +64,7 @@ export default function AnalyzerPage() {
     toast.info("已重置所有指标");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const record: AnalysisRecord = {
       id: nanoid(),
       pair: activePair,
@@ -75,8 +75,12 @@ export default function AnalyzerPage() {
       chartImage,
       notes: notes.trim() || undefined,
     };
-    saveRecord(record);
-    toast.success(`已保存 ${activePair} ${timeframe} 分析记录`);
+    try {
+      await apiSaveRecord(record);
+      toast.success(`已保存 ${activePair} ${timeframe} 分析记录`);
+    } catch {
+      toast.error("保存失败，请重试");
+    }
   };
 
   const handleChartUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
