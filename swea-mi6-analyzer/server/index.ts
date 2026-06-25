@@ -4,6 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import recordsRouter from "./routes/records.js";
+import authRouter from "./routes/auth.js";
+import { requireAuth } from "./middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +17,8 @@ async function startServer() {
   app.use(express.json({ limit: "20mb" }));
 
   // API routes
-  app.use("/api/records", recordsRouter);
+  app.use("/api/auth", authRouter);
+  app.use("/api/records", requireAuth, recordsRouter);
 
   // In production: this file is dist/index.js, so __dirname = dist/
   // Vite builds to dist/public, so staticPath = dist/public ✓

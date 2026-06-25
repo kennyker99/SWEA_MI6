@@ -8,6 +8,7 @@ import AnalyzerPage from "./pages/AnalyzerPage";
 import HistoryPage from "./pages/HistoryPage";
 import ReferencePage from "./pages/ReferencePage";
 import AppLayout from "./components/AppLayout";
+import PasswordGate from "./components/PasswordGate";
 
 function Router() {
   return (
@@ -26,12 +27,14 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <PasswordGate>
+        <ThemeProvider defaultTheme="dark">
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </PasswordGate>
     </ErrorBoundary>
   );
 }
