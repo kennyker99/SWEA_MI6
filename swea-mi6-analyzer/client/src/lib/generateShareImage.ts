@@ -199,7 +199,8 @@ async function drawCard(canvas: HTMLCanvasElement, record: AnalysisRecord) {
   curY += 80;
 
   // ── Indicators grid ─────────────────────────────────────────────────────────
-  const indEntries = Object.entries(record.indicators);
+  const IND_KEYS = ["candlestick", "chartPattern", "trendPattern", "fibonacci", "bollingerBand", "movingAverage"] as const;
+  const indEntries = IND_KEYS.map((k) => [k, record.indicators[k]] as const);
   const COLS = 3;
   const indW = (W - 160 - (COLS - 1) * 20) / COLS;
   const indH = 128;

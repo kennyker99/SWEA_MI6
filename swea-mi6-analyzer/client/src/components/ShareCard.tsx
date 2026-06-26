@@ -1,6 +1,8 @@
 import { forwardRef } from "react";
 import type { AnalysisRecord } from "@/lib/swea-data";
 
+const INDICATOR_KEYS = ["candlestick", "chartPattern", "trendPattern", "fibonacci", "bollingerBand", "movingAverage"] as const;
+
 const SIGNAL_LABELS: Record<string, string> = {
   strong_bullish: "强烈多头 ★★★",
   bullish:        "多头信号 ★★",
@@ -162,7 +164,7 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ record }, ref) =
       {/* Indicators grid */}
       <div style={{ padding: "40px 80px 0", flexShrink: 0 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 18 }}>
-          {Object.entries(record.indicators).map(([key, val]) => {
+          {INDICATOR_KEYS.map((key) => { const val = record.indicators[key];
             const color = val.state === "bullish" ? "#10b981" : val.state === "bearish" ? "#ef4444" : "#6b7280";
             const arrow = val.state === "bullish" ? "▲" : val.state === "bearish" ? "▼" : "—";
             return (

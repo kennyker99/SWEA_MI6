@@ -247,7 +247,7 @@ function RecordRow({ record, isSelected, onSelect, onDelete, onImageClick, onEdi
       {isSelected && (
         <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(record.indicators).map(([key, val]) => (
+            {INDICATOR_KEYS.map((key) => { const val = record.indicators[key]; return (
               <div key={key} className="rounded-lg border border-white/8 bg-slate-900/40 p-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[11px] font-semibold text-slate-400">{INDICATOR_NAMES[key] ?? key}</span>
@@ -257,7 +257,7 @@ function RecordRow({ record, isSelected, onSelect, onDelete, onImageClick, onEdi
                 </div>
                 {val.notes ? <p className="text-[11px] text-slate-500">{val.notes}</p> : <p className="text-[11px] text-slate-700 italic">无备注</p>}
               </div>
-            ))}
+            ); })}
           </div>
           {record.notes && (
             <div className="rounded-lg border border-white/8 bg-slate-900/40 p-3">
@@ -644,7 +644,7 @@ function RecordDetailModal({ record, onClose, onImageClick }: {
           <div>
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">6 大指标详情</h3>
             <div className="space-y-2">
-              {Object.entries(record.indicators).map(([key, val]) => (
+              {INDICATOR_KEYS.map((key) => { const val = record.indicators[key]; return (
                 <div key={key} className="rounded-xl border border-white/8 bg-slate-800/30 p-3">
                   <div className="flex items-start gap-3">
                     <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border ${val.state === "bullish" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400" : val.state === "bearish" ? "bg-red-500/15 border-red-500/30 text-red-400" : "bg-slate-700/40 border-slate-600/30 text-slate-400"}`}>
@@ -667,7 +667,7 @@ function RecordDetailModal({ record, onClose, onImageClick }: {
                     )}
                   </div>
                 </div>
-              ))}
+              ); })}
             </div>
           </div>
           {record.notes && (
