@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import AnalyzerPage from "./pages/AnalyzerPage";
 import HistoryPage from "./pages/HistoryPage";
 import ReferencePage from "./pages/ReferencePage";
+import QuantPage from "./pages/QuantPage";
 import AppLayout from "./components/AppLayout";
 import PasswordGate from "./components/PasswordGate";
 
@@ -17,6 +18,7 @@ function Router() {
         <Route path={"/"} component={AnalyzerPage} />
         <Route path={"/history"} component={HistoryPage} />
         <Route path={"/reference"} component={ReferencePage} />
+        <Route path={"/quant"} component={QuantPage} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

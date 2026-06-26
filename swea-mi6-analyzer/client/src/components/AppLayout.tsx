@@ -11,6 +11,7 @@ import {
   Clock,
   Menu,
   X,
+  Calculator,
 } from "lucide-react";
 
 const LOGO_URL = "/logo.svg";
@@ -33,6 +34,12 @@ const NAV_ITEMS = [
     label: "指标说明",
     labelEn: "Reference",
     icon: BookOpen,
+  },
+  {
+    path: "/quant",
+    label: "量化分析",
+    labelEn: "Quant",
+    icon: Calculator,
   },
 ];
 
