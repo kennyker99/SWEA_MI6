@@ -54,14 +54,15 @@ export async function apiGetRecord(id: string): Promise<AnalysisRecord | undefin
 
 function rowToRecord(row: Record<string, unknown>): AnalysisRecord {
   return {
-    id:         row.id as string,
-    pair:       row.pair as string,
-    timeframe:  row.timeframe as string,
-    date:       row.date as string,
-    indicators: row.indicators as AnalysisRecord["indicators"],
-    verdict:    row.verdict as AnalysisRecord["verdict"],
-    chartImage:   row.chart_image as string | undefined,
-    notes:        row.notes as string | undefined,
-    tradeRecord:  row.trade_record as AnalysisRecord["tradeRecord"] | undefined,
+    id:          row.id as string,
+    pair:        row.pair as string,
+    timeframe:   row.timeframe as string,
+    date:        row.date as string,
+    indicators:  row.indicators as AnalysisRecord["indicators"],
+    verdict:     row.verdict as AnalysisRecord["verdict"],
+    // Drizzle returns camelCase keys matching the schema property names
+    chartImage:  (row.chartImage ?? row.chart_image) as string | undefined,
+    notes:       row.notes as string | undefined,
+    tradeRecord: (row.tradeRecord ?? row.trade_record) as AnalysisRecord["tradeRecord"] | undefined,
   };
 }
