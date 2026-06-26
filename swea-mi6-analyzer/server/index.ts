@@ -6,6 +6,7 @@ import fs from "fs";
 import recordsRouter from "./routes/records.js";
 import authRouter from "./routes/auth.js";
 import { requireAuth } from "./middleware/auth.js";
+import { db, schema } from "./db/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +16,17 @@ async function startServer() {
   const server = createServer(app);
 
   app.use(express.json({ limit: "20mb" }));
+
+  // Health check — shows DB status and record count
+  app.get("/api/health", async (_req, res) => {
+    if (!db) return res.json({ db: false, error: "DATABASE_URL not set" });
+    try {
+      const rows = await db.select({ id: schema.analysisRecords.id }).from(schema.analysisRecords);
+      res.json({ db: true, recordCount: rows.length });
+    } catch (err: any) {
+      res.json({ db: false, error: err?.message });
+    }
+  });
 
   // API routes
   app.use("/api/auth", authRouter);

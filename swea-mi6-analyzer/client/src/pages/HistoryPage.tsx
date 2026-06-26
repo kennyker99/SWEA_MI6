@@ -38,12 +38,18 @@ export default function HistoryPage() {
   const [sharingRecord, setSharingRecord] = useState<AnalysisRecord | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   const loadRecords = () => {
     setRefreshing(true);
+    setDbError(null);
     apiLoadRecords()
-      .then(setRecords)
-      .catch(() => toast.error("加载记录失败"))
+      .then((data) => { setRecords(data); setDbError(null); })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "未知错误";
+        setDbError(msg);
+        toast.error(`加载失败: ${msg}`);
+      })
       .finally(() => setRefreshing(false));
   };
 
@@ -129,6 +135,14 @@ export default function HistoryPage() {
           )}
         </div>
       </div>
+
+      {/* DB error banner */}
+      {dbError && (
+        <div className="bg-red-900/40 border-b border-red-500/30 px-4 py-2 text-center">
+          <span className="text-red-400 text-xs font-mono">⚠ 数据库错误: {dbError}</span>
+          <button onClick={loadRecords} className="ml-3 text-red-300 underline text-xs">重试</button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">

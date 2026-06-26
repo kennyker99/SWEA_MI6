@@ -20,7 +20,7 @@ import {
   type IndicatorValue,
   type TradeRecord,
 } from "@/lib/swea-data";
-import { apiSaveRecord } from "@/lib/api";
+import { apiSaveRecord, apiGetRecord } from "@/lib/api";
 import IndicatorCard from "@/components/IndicatorCard";
 import VerdictCard from "@/components/VerdictCard";
 
@@ -81,7 +81,13 @@ export default function AnalyzerPage() {
     };
     try {
       await apiSaveRecord(record);
-      toast.success(`已保存 ${activePair} ${timeframe} 分析记录`);
+      // Immediately verify the record was actually written to DB
+      const verified = await apiGetRecord(record.id);
+      if (verified) {
+        toast.success(`✓ 已保存并确认入库: ${activePair} ${timeframe}`);
+      } else {
+        toast.error("保存请求成功，但数据库未找到记录，请检查数据库配置");
+      }
     } catch (err) {
       toast.error(`保存失败: ${err instanceof Error ? err.message : "请重试"}`);
     }

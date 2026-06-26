@@ -12,7 +12,10 @@ async function runMigrations() {
     return;
   }
 
-  const connection = await mysql.createConnection(process.env.DATABASE_URL);
+  const connection = await mysql.createConnection({
+    uri: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
   const db = drizzle(connection);
   const migrationsFolder = path.resolve(__dirname, "drizzle");
   console.log("Running migrations from:", migrationsFolder);
