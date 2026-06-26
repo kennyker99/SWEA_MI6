@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import html2canvas from "html2canvas";
+import { generateShareImage } from "@/lib/generateShareImage";
 import {
   Search, Trash2, TrendingUp, TrendingDown, Minus,
   Calendar, Clock, X, ZoomIn, FileText, BarChart2, Pencil,
@@ -504,32 +504,15 @@ function EditRecordModal({ record, onClose, onSave }: {
 // ─── Share Modal ──────────────────────────────────────────────────────────────
 
 function ShareModal({ record, onClose }: { record: AnalysisRecord; onClose: () => void }) {
-  // offscreenRef: full-size card rendered off-screen for html2canvas
-  const offscreenRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
   const handleDownload = async () => {
-    if (!offscreenRef.current) return;
     setExporting(true);
     try {
-      // Capture the full 1080×1920 off-screen element directly
-      const canvas = await html2canvas(offscreenRef.current, {
-        scale: 1,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#0a0f1e",
-        width: 1080,
-        height: 1920,
-        windowWidth: 1080,
-        windowHeight: 1920,
-        scrollX: 0,
-        scrollY: 0,
-        x: 0,
-        y: 0,
-      });
+      const dataUrl = await generateShareImage(record);
       const link = document.createElement("a");
       link.download = `MI6_${record.pair}_${record.timeframe}_${new Date(record.date).toLocaleDateString("zh-CN").replace(/\//g, "-")}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
       toast.success("图片已下载，可直接分享至各社群");
     } catch (e) {
@@ -540,16 +523,10 @@ function ShareModal({ record, onClose }: { record: AnalysisRecord; onClose: () =
     }
   };
 
-  // Calculate preview scale to fit card width into ~320px container
   const previewScale = 320 / 1080;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-start overflow-y-auto p-4" onClick={onClose}>
-      {/* Off-screen full-size card for html2canvas — must be in DOM but invisible */}
-      <div style={{ position: "fixed", left: -2000, top: 0, width: 1080, height: 1920, overflow: "hidden", zIndex: -1 }}>
-        <ShareCard ref={offscreenRef} record={record} />
-      </div>
-
       <div className="w-full max-w-sm my-4" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
