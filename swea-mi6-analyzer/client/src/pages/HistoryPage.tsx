@@ -504,20 +504,28 @@ function EditRecordModal({ record, onClose, onSave }: {
 // ─── Share Modal ──────────────────────────────────────────────────────────────
 
 function ShareModal({ record, onClose }: { record: AnalysisRecord; onClose: () => void }) {
-  const cardRef = useRef<HTMLDivElement>(null);
+  // offscreenRef: full-size card rendered off-screen for html2canvas
+  const offscreenRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
   const handleDownload = async () => {
-    if (!cardRef.current) return;
+    if (!offscreenRef.current) return;
     setExporting(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
+      // Capture the full 1080×1920 off-screen element directly
+      const canvas = await html2canvas(offscreenRef.current, {
         scale: 1,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: null,
+        backgroundColor: "#0a0f1e",
         width: 1080,
         height: 1920,
+        windowWidth: 1080,
+        windowHeight: 1920,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0,
       });
       const link = document.createElement("a");
       link.download = `MI6_${record.pair}_${record.timeframe}_${new Date(record.date).toLocaleDateString("zh-CN").replace(/\//g, "-")}.png`;
@@ -532,8 +540,16 @@ function ShareModal({ record, onClose }: { record: AnalysisRecord; onClose: () =
     }
   };
 
+  // Calculate preview scale to fit card width into ~320px container
+  const previewScale = 320 / 1080;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-start overflow-y-auto p-4" onClick={onClose}>
+      {/* Off-screen full-size card for html2canvas — must be in DOM but invisible */}
+      <div style={{ position: "fixed", left: -2000, top: 0, width: 1080, height: 1920, overflow: "hidden", zIndex: -1 }}>
+        <ShareCard ref={offscreenRef} record={record} />
+      </div>
+
       <div className="w-full max-w-sm my-4" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -544,12 +560,18 @@ function ShareModal({ record, onClose }: { record: AnalysisRecord; onClose: () =
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"><X size={16} /></button>
         </div>
 
-        {/* Card preview — scaled 0.25x in container */}
+        {/* Card preview — CSS scaled to fit */}
         <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl mb-4 bg-slate-950"
-          style={{ paddingBottom: "177.78%" /* 9:16 ratio */ }}>
+          style={{ width: "100%", height: Math.round(320 / (9/16) * (16/9)) + "px", /* 9:16 height */ paddingBottom: "177.78%" }}>
           <div className="absolute inset-0 overflow-hidden">
-            <div style={{ transform: "scale(0.25)", transformOrigin: "top left", width: 1080, height: 1920, pointerEvents: "none" }}>
-              <ShareCard ref={cardRef} record={record} />
+            <div style={{
+              transform: `scale(${previewScale})`,
+              transformOrigin: "top left",
+              width: 1080,
+              height: 1920,
+              pointerEvents: "none",
+            }}>
+              <ShareCard record={record} />
             </div>
           </div>
         </div>
@@ -559,7 +581,7 @@ function ShareModal({ record, onClose }: { record: AnalysisRecord; onClose: () =
           <button onClick={handleDownload} disabled={exporting}
             className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold text-sm transition-colors">
             <Download size={16} />
-            {exporting ? "生成中..." : "下载 PNG 图片"}
+            {exporting ? "生成中 (1080×1920)..." : "下载 PNG (1080×1920)"}
           </button>
           <p className="text-center text-[11px] text-slate-600 px-4">
             下载后可直接上传至 TikTok、Instagram、Facebook 等平台
