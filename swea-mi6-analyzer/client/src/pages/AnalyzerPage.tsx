@@ -299,8 +299,14 @@ export default function AnalyzerPage() {
                   { key: "entryPrice", label: "入场价位", placeholder: "0.00000" },
                   { key: "takeProfit", label: "止盈 (TP)", placeholder: "0.00000" },
                   { key: "stopLoss",   label: "止损 (SL)", placeholder: "0.00000" },
-                  { key: "actualPnl",  label: "实际盈利",  placeholder: "+0.00" },
-                ] as const).map(({ key, label, placeholder }) => (
+                  { key: "actualPnl",  label: "实际盈亏",  placeholder: "+0.00 / -0.00" },
+                ] as const).map(({ key, label, placeholder }) => {
+                  const pnlColor = key === "actualPnl"
+                    ? (tradeRecord.actualPnl != null && tradeRecord.actualPnl < 0
+                        ? "text-red-400 border-red-500/20 focus:ring-red-500/30"
+                        : "text-emerald-400 border-emerald-500/20 focus:ring-emerald-500/30")
+                    : null;
+                  return (
                   <div key={key}>
                     <label className="block text-[10px] text-slate-500 mb-1.5">{label}</label>
                     <input
@@ -313,13 +319,12 @@ export default function AnalyzerPage() {
                       }))}
                       placeholder={placeholder}
                       className={`w-full px-3 py-2 rounded-lg border bg-slate-800/60 text-sm font-mono focus:outline-none focus:ring-1 transition-colors placeholder:text-slate-700
-                        ${key === "stopLoss" ? "text-red-400 border-red-500/20 focus:ring-red-500/30" :
-                          key === "actualPnl" ? "text-emerald-400 border-emerald-500/20 focus:ring-emerald-500/30" :
-                          "text-slate-200 border-white/8 focus:ring-teal-500/30"}
+                        ${pnlColor ?? (key === "stopLoss" ? "text-red-400 border-red-500/20 focus:ring-red-500/30" : "text-slate-200 border-white/8 focus:ring-teal-500/30")}
                       `}
                     />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
